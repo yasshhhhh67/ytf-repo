@@ -1,0 +1,32 @@
+name: CI
+
+# Light checks only. Production (research, voice, rendering, uploads) never runs on GitHub.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python compiles
+        run: python3 -m compileall -q ytf tools
+
+      - name: JavaScript parses
+        run: for f in engine/*.js engine/*.mjs; do node --check "$f"; done
+
+      - name: JSON files are valid
+        run: for f in $(git ls-files '*.json'); do python3 -m json.tool "$f" > /dev/null || { echo "invalid: $f"; exit 1; }; done
+
+      - name: No secrets committed
+        run: |
+          if git grep -nE 'AIza[0-9A-Za-z_-]{30}|AQ\.A[0-9A-Za-z_-]{20}|ya29\.|1//0[0-9A-Za-z_-]{20}|BEGIN [A-Z ]*PRIVATE KEY|bot[0-9]{6,}:[A-Za-z0-9_-]{30}|"client_secret"'; then
+            echo "Possible secret found"; exit 1
+          fi
