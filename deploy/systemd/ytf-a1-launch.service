@@ -1,0 +1,21 @@
+[Unit]
+Description=YTF: try to create the Always Free A1 render worker (idempotent)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ytf
+Group=ytf
+Nice=10
+LoadCredentialEncrypted=ytf.oci-config:/etc/credstore.encrypted/ytf.oci-config
+LoadCredentialEncrypted=ytf.oci-api-key:/etc/credstore.encrypted/ytf.oci-api-key
+ExecStart=/srv/ytf/venv/bin/python /srv/ytf/bench/a1_launch.py
+# exit 3 = out of capacity: expected, not a failure
+SuccessExitStatus=3
+MemoryMax=250M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadOnlyPaths=/srv/ytf

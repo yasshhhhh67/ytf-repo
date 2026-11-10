@@ -1,0 +1,18 @@
+# Never commit data, secrets or media
+data/
+tmp/
+logs/
+*.sqlite
+*.sqlite-*
+*.key
+*.pem
+*.token
+*client-secret*.json
+*.cred
+.env
+*.mp4
+*.wav
+*.flac
+node_modules/
+venv/
+__pycache__/

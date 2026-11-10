@@ -1,0 +1,11 @@
+[Unit]
+Description=YTF: retry A1 worker creation every ~20 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=20min
+RandomizedDelaySec=180
+Persistent=true
+
+[Install]
+WantedBy=timers.target

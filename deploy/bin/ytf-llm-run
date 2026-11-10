@@ -1,0 +1,8 @@
+#!/bin/bash
+# Run a command as ytf-llm inside a private D-Bus session with its gnome-keyring unlocked.
+# Usage: ytf-llm-run agy -p "prompt"   (the Antigravity login lives only in this user's keyring)
+exec sudo -u ytf-llm -H dbus-run-session -- bash -c '
+  eval "$(gnome-keyring-daemon --unlock --components=secrets < ~/.keyring-pass)"
+  export GNOME_KEYRING_CONTROL
+  export PATH="$HOME/.local/bin:$PATH"
+  exec "$@"' _ "$@"
