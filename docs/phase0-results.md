@@ -16,3 +16,14 @@
 Projected per video (micro only): Short 45 s = TTS 4.4 min + align 0.7 min + render 8 min ~ 13 min.
 Long 8.5 min = TTS ~50 min + align ~7 min + render ~90 min ~ 2.5 h.
 Launch cadence (3 Shorts + 1 long / week) ~ 3.2 CPU-hours/week -> feasible on the micro alone.
+
+## Integration checks (2026-11-10)
+
+| Check | Result |
+|---|---|
+| Gemini API free tier (no billing) | gemini-3.8-flash and gemini-3.5-flash-lite answer in JSON mode |
+| Antigravity CLI 1.5.4 headless (isolated user, keyring) | login persists across sessions; `agy --sandbox -p --output-format json` 15 s round trip, 265 MB peak |
+| Telegram bot | live, locked to one chat ID |
+| OCI API | A1 limit 2 OCPU / 12 GB available, 1 AD (Mumbai); launch = "Out of host capacity" -> retry timer every ~20 min |
+| YouTube OAuth (Desktop client, app In production, unverified) | refresh token with upload, youtube, force-ssl, analytics scopes; channel phone-verified (longUploadsStatus=allowed) |
+| Private test upload | resumable upload 3.4 s, processed in ~35 s, containsSyntheticMedia accepted, custom thumbnail set OK, test video deleted |
