@@ -1,0 +1,13 @@
+{
+ "_comment": "Domains the research step may fetch from. tier 1 = primary (papers, official docs, standards, universities, manufacturers); tier 2 = quality press / reference; tier 3 = orientation only.",
+ "domains": {
+  "arxiv.org": 1, "acm.org": 1, "ieee.org": 1, "nature.com": 1, "science.org": 1, "nist.gov": 1, "nasa.gov": 1,
+  "nvidia.com": 1, "amd.com": 1, "intel.com": 1, "arm.com": 1, "tsmc.com": 1, "asml.com": 1, "samsung.com": 1,
+  "google.com": 1, "research.google": 1, "deepmind.google": 1, "openai.com": 1, "anthropic.com": 1, "meta.com": 1,
+  "microsoft.com": 1, "apple.com": 1, "pytorch.org": 1, "tensorflow.org": 1, "huggingface.co": 1,
+  "mit.edu": 1, "stanford.edu": 1, "berkeley.edu": 1, "cmu.edu": 1, "harvard.edu": 1, "ox.ac.uk": 1, "cam.ac.uk": 1,
+  "d2l.ai": 1, "distill.pub": 1, "cs231n.github.io": 1,
+  "spectrum.ieee.org": 2, "britannica.com": 2, "arstechnica.com": 2, "quantamagazine.org": 2, "technologyreview.com": 2,
+  "en.wikipedia.org": 3
+ }
+}

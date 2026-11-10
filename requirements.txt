@@ -1,0 +1,14 @@
+numpy
+scipy
+soundfile
+psutil
+kokoro-onnx==0.6.1
+faster-whisper==1.2.1
+piper-tts==1.8.0
+jsonschema
+rapidfuzz
+requests
+trafilatura
+oci
+google-auth-oauthlib
+google-api-python-client

@@ -1,0 +1,10 @@
+#!/bin/bash
+# Runs as ytf-llm (through sudo). Reads a prompt on stdin, prints Antigravity's JSON result on stdout.
+# The Antigravity login lives only in ytf-llm's keyring; nothing else on the system can read it.
+set -euo pipefail
+PROMPT=$(cat)
+WORK="$HOME/work"; mkdir -p "$WORK"; cd "$WORK"
+exec dbus-run-session -- bash -c '
+  eval "$(gnome-keyring-daemon --unlock --components=secrets < "$HOME/.keyring-pass")"
+  export GNOME_KEYRING_CONTROL
+  exec "$HOME/.local/bin/agy" --sandbox --print-timeout "540s" --output-format json -p "$1"' _ "$PROMPT"

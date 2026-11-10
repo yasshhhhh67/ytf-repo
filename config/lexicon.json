@@ -1,0 +1,11 @@
+{
+ "_comment": "TTS respellings: whole-word, case-sensitive. Captions keep the original spelling.",
+ "GPUs": "G P Use", "GPU": "G P U", "CPUs": "C P Use", "CPU": "C P U", "TPU": "T P U", "TPUs": "T P Use",
+ "NPU": "N P U", "AI": "A I", "LLM": "L L M", "LLMs": "L L Ms", "ML": "M L", "RAM": "ram", "VRAM": "V ram",
+ "HBM": "H B M", "NVIDIA": "en-VID-ee-uh", "Nvidia": "en-VID-ee-uh", "CUDA": "COO-duh", "TSMC": "T S M C",
+ "ASML": "A S M L", "EUV": "E U V", "nm": "nanometers", "FLOPS": "flops", "FLOP": "flop", "TFLOPS": "teraflops",
+ "GHz": "gigahertz", "MHz": "megahertz", "SIMD": "sim-D", "ALU": "A L U", "ALUs": "A L Use", "API": "A P I",
+ "GPT": "G P T", "ChatGPT": "Chat G P T", "RISC-V": "risk five", "ARM": "arm", "x86": "x eighty-six",
+ "SoC": "S O C", "IoT": "I O T", "Wi-Fi": "why-fye", "LiDAR": "lie-dar", "qubit": "Q-bit", "qubits": "Q-bits",
+ "e.g.": "for example", "i.e.": "that is", "vs": "versus", "vs.": "versus"
+}

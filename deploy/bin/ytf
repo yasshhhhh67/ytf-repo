@@ -1,0 +1,14 @@
+#!/bin/bash
+# Run a ytf pipeline command as the ytf user with the encrypted credentials loaded by systemd.
+#   ytf <command> [args]                   foreground, output streamed
+#   ytf --detach <name> <command> [args]   background unit ytf-<name>; logs: journalctl -u ytf-<name> -f
+set -euo pipefail
+CREDS=(); for n in $(sudo ls /etc/credstore.encrypted | grep '^ytf\.'); do CREDS+=(-p "LoadCredentialEncrypted=$n:/etc/credstore.encrypted/$n"); done
+COMMON=(--uid=ytf --gid=ytf -p WorkingDirectory=/srv/ytf/app -p Nice=5 -p OOMScoreAdjust=300
+        -E PLAYWRIGHT_BROWSERS_PATH=/srv/ytf/data/models/ms-playwright -E HF_HUB_OFFLINE=1 -E PYTHONUNBUFFERED=1
+        -E HOME=/srv/ytf "${CREDS[@]}")
+if [ "${1:-}" = "--detach" ]; then
+  name=$2; shift 2
+  exec sudo systemd-run --unit="ytf-$name" --collect "${COMMON[@]}" /srv/ytf/venv/bin/python -m ytf.cli "$@"
+fi
+exec sudo systemd-run --quiet --wait --pipe --collect "${COMMON[@]}" /srv/ytf/venv/bin/python -m ytf.cli "$@"

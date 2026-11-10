@@ -1,0 +1,277 @@
+{
+ "format": "short",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "duration": 54.5,
+ "accent": "#3d6bff",
+ "scenes": [
+  {
+   "id": "s01",
+   "template": "title_card",
+   "start": 0.0,
+   "end": 4.5,
+   "params": {
+    "kicker": "How it works",
+    "title": "How a GPU Actually Does AI Math",
+    "subtitle": "Billions of tiny multiplications, all at once"
+   }
+  },
+  {
+   "id": "s02",
+   "template": "kinetic_text",
+   "start": 4.5,
+   "end": 9.0,
+   "params": {
+    "lines": [
+     "Every word you type",
+     "becomes a list",
+     "of numbers."
+    ],
+    "emphasis": "numbers"
+   }
+  },
+  {
+   "id": "s03",
+   "template": "matrix_multiply",
+   "start": 9.0,
+   "end": 16.0,
+   "params": {
+    "title": "The core move: multiply and add",
+    "a": [
+     [
+      1,
+      2
+     ],
+     [
+      3,
+      4
+     ]
+    ],
+    "b": [
+     [
+      5,
+      6
+     ],
+     [
+      7,
+      8
+     ]
+    ],
+    "caption": "Each output cell is a row times a column"
+   }
+  },
+  {
+   "id": "s04",
+   "template": "parallel_grid",
+   "start": 16.0,
+   "end": 23.0,
+   "params": {
+    "title": "Same job, two strategies",
+    "left_label": "CPU \u00b7 8 big cores",
+    "left_cores": 8,
+    "right_label": "GPU \u00b7 1,024 small cores",
+    "right_cores": 1024,
+    "tasks": 512,
+    "task_label": "sums"
+   }
+  },
+  {
+   "id": "s05",
+   "template": "labeled_diagram",
+   "start": 23.0,
+   "end": 27.5,
+   "params": {
+    "title": "Inside one AI layer",
+    "nodes": [
+     {
+      "id": "in",
+      "label": "Input numbers"
+     },
+     {
+      "id": "w",
+      "label": "Weights"
+     },
+     {
+      "id": "mm",
+      "label": "Matrix multiply",
+      "highlight": true
+     },
+     {
+      "id": "act",
+      "label": "Activation"
+     },
+     {
+      "id": "out",
+      "label": "Next layer"
+     }
+    ],
+    "edges": [
+     {
+      "from": "in",
+      "to": "mm"
+     },
+     {
+      "from": "w",
+      "to": "mm"
+     },
+     {
+      "from": "mm",
+      "to": "act"
+     },
+     {
+      "from": "act",
+      "to": "out"
+     }
+    ]
+   }
+  },
+  {
+   "id": "s06",
+   "template": "process_flow",
+   "start": 27.5,
+   "end": 32.0,
+   "params": {
+    "title": "What happens per token",
+    "steps": [
+     {
+      "label": "Turn word into vector",
+      "detail": "A list of a few thousand numbers"
+     },
+     {
+      "label": "Multiply by weights",
+      "detail": "Billions of multiply-adds"
+     },
+     {
+      "label": "Pick the next word",
+      "detail": "Highest-scoring option wins"
+     }
+    ]
+   }
+  },
+  {
+   "id": "s07",
+   "template": "comparison_split",
+   "start": 32.0,
+   "end": 36.5,
+   "params": {
+    "title": "CPU vs GPU",
+    "left": {
+     "heading": "CPU",
+     "points": [
+      "Few powerful cores",
+      "Great at branching logic"
+     ]
+    },
+    "right": {
+     "heading": "GPU",
+     "points": [
+      "Thousands of simple cores",
+      "Great at repeated math"
+     ]
+    },
+    "verdict": "AI math = repeated math"
+   }
+  },
+  {
+   "id": "s08",
+   "template": "big_number",
+   "start": 36.5,
+   "end": 41.0,
+   "params": {
+    "value": 100,
+    "suffix": "billion",
+    "label": "transistors on one chip",
+    "context": "Smaller than a postage stamp"
+   }
+  },
+  {
+   "id": "s09",
+   "template": "bar_chart",
+   "start": 41.0,
+   "end": 45.5,
+   "params": {
+    "title": "Multiply-adds per second (illustrative)",
+    "unit": "T",
+    "bars": [
+     {
+      "label": "Laptop CPU",
+      "value": 2
+     },
+     {
+      "label": "Gaming GPU",
+      "value": 80
+     },
+     {
+      "label": "AI GPU",
+      "value": 1000,
+      "highlight": true
+     }
+    ],
+    "source": "illustrative values"
+   }
+  },
+  {
+   "id": "s10",
+   "template": "recap_list",
+   "start": 45.5,
+   "end": 50.0,
+   "params": {
+    "title": "Remember",
+    "items": [
+     "AI turns words into numbers",
+     "Thinking = multiply and add",
+     "GPUs do it in parallel"
+    ]
+   }
+  },
+  {
+   "id": "s11",
+   "template": "end_card",
+   "start": 50.0,
+   "end": 54.5,
+   "params": {
+    "line": "Now you know how a GPU thinks.",
+    "next": "Next: why AI chips run so hot"
+   }
+  }
+ ],
+ "captions": [
+  {
+   "s": 0.2,
+   "e": 1.1,
+   "text": "every word you",
+   "hi": "word"
+  },
+  {
+   "s": 1.1,
+   "e": 2.0,
+   "text": "type becomes a",
+   "hi": "becomes"
+  },
+  {
+   "s": 2.0,
+   "e": 2.9,
+   "text": "list of numbers",
+   "hi": "of"
+  },
+  {
+   "s": 2.9,
+   "e": 3.8,
+   "text": "and a GPU",
+   "hi": "a"
+  },
+  {
+   "s": 3.8,
+   "e": 4.7,
+   "text": "multiplies them all",
+   "hi": "them"
+  },
+  {
+   "s": 4.7,
+   "e": 5.6,
+   "text": "at once",
+   "hi": "once"
+  }
+ ]
+}

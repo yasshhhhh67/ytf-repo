@@ -1,0 +1,2 @@
+# The pipeline user may run exactly one helper as the isolated LLM user, nothing else.
+ytf ALL=(ytf-llm) NOPASSWD: /usr/local/libexec/ytf-agy
