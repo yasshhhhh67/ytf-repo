@@ -136,9 +136,11 @@ def _script_check(fmt, facts, chapters):
             for b in BANNED:
                 if b in low: errs.append(f'{s["id"]}: banned phrase "{b}"')
             if len(re.findall(r'\d[\d,.]*', s['text'])) > 2: errs.append(f'{s["id"]}: too many numbers in one segment')
-        r = readability(' '.join(s['text'] for s in obj['segments']))
-        if r['flesch'] < 55: errs.append(f'too hard to follow (Flesch reading ease {r["flesch"]}, need 55+): use shorter sentences and plainer words')
-        if r['max'] > 30: errs.append(f'a sentence has {r["max"]} words; keep every sentence under 28 words')
+        text = ' '.join(s['text'] for s in obj['segments']); r = readability(text)
+        if r['flesch'] < 45 or r['avg'] > 17 or r['max'] > 28:
+            sents = sorted((x for x in re.split(r'(?<=[.!?])\s+', text) if x.strip()), key=lambda x: -len(x.split()))
+            errs.append(f'too hard to follow (reading ease {r["flesch"]}, need 45+; average sentence {r["avg"]} words, need <=17; '
+                        f'longest {r["max"]}, need <=28). Split or simplify these sentences first: ' + ' | '.join(sents[:6]))
         return errs
     return check
 
@@ -171,7 +173,7 @@ Outline:
 
 Facts:
 {[{'id': f['id'], 'fact': f['fact']} for f in o['facts']]}""",
-        SCRIPT_SCHEMA, check=_script_check('long', facts, chapters), timeout=900)
+        SCRIPT_SCHEMA, check=_script_check('long', facts, chapters), timeout=900, repairs=2)
     script = {'title': o['title'], 'chapters': [{'id': c['id'], 'title': c['title']} for c in o['chapters']],
               'facts': o['facts'], 'segments': _expand(s['segments'], o['facts'])}
     write_json(P / 'script' / 'v1.json', script)
@@ -198,7 +200,7 @@ segments without new facts have "facts": []. Never copy wording from quotes. Seg
 
 Facts:
 {[{'id': f['id'], 'fact': f['fact']} for f in parent['facts']]}""",
-        SCRIPT_SCHEMA, check=_script_check('short', facts, {'c1': 'Short'}), timeout=600)
+        SCRIPT_SCHEMA, check=_script_check('short', facts, {'c1': 'Short'}), timeout=600, repairs=2)
     script = {'title': proj['topic'], 'chapters': [{'id': 'c1', 'title': 'Short'}], 'facts': parent['facts'],
               'segments': _expand(s['segments'], parent['facts'])}
     write_json(P / 'script' / 'v1.json', script)

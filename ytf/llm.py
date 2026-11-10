@@ -11,7 +11,7 @@ from .common import DATA, cred, log
 PREAMBLE = ('You are one step in an automated video-production pipeline. Do not use any tools, do not read or write '
             'files, do not run commands, do not browse. Reply with ONE JSON object only: no markdown fences, no prose.\n\n')
 AGY_MAX_BYTES = 120_000          # Linux limits a single argv string to 128 KiB
-GEMINI_MODEL = 'gemini-flash-latest'
+GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest']   # fall back to Lite when Flash is overloaded
 _broken = set()
 
 
@@ -46,8 +46,8 @@ def _agy(prompt, timeout):
 
 def _gemini(prompt, timeout):
     key = cred('ytf.gemini-key').strip()
-    for wait in (20, 60, None):                     # 503 "high demand" is usually brief: retry twice
-        r = requests.post(f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent',
+    for model, wait in ((GEMINI_MODELS[0], 30), (GEMINI_MODELS[0], 60), (GEMINI_MODELS[1], 30), (GEMINI_MODELS[1], None)):
+        r = requests.post(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
                           headers={'x-goog-api-key': key, 'Content-Type': 'application/json'}, timeout=timeout,
                           json={'contents': [{'parts': [{'text': prompt}]}],
                                 'generationConfig': {'responseMimeType': 'application/json', 'temperature': 0.6}})
@@ -73,7 +73,7 @@ def _ledger(**rec):
         f.write(json.dumps({'ts': time.strftime('%Y-%m-%dT%H:%M:%S'), **rec}) + '\n')
 
 
-def complete_json(task, prompt, schema, order=('agy', 'gemini'), timeout=600, check=None):
+def complete_json(task, prompt, schema, order=('agy', 'gemini'), timeout=600, check=None, repairs=1):
     """Return a dict valid against `schema` (and optional extra `check(obj) -> list[str] errors`)."""
     full = PREAMBLE + prompt + '\n\nThe JSON must match this JSON Schema:\n' + json.dumps(schema)
     errors_seen = []
@@ -81,7 +81,7 @@ def complete_json(task, prompt, schema, order=('agy', 'gemini'), timeout=600, ch
         if prov in _broken:
             continue
         p = full
-        for attempt in range(2):
+        for attempt in range(1 + repairs):
             t0 = time.time()
             try:
                 raw = PROVIDERS[prov](p, timeout)

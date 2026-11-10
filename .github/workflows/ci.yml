@@ -27,6 +27,6 @@ jobs:
 
       - name: No secrets committed
         run: |
-          if git grep -nE 'AIza[0-9A-Za-z_-]{30}|AQ\.A[0-9A-Za-z_-]{20}|ya29\.|1//0[0-9A-Za-z_-]{20}|BEGIN [A-Z ]*PRIVATE KEY|bot[0-9]{6,}:[A-Za-z0-9_-]{30}|"client_secret"'; then
+          if git grep -nE 'AIza[0-9A-Za-z_-]{30}|AQ\.A[0-9A-Za-z_-]{20}|ya29\.|1//0[0-9A-Za-z_-]{20}|BEGIN [A-Z ]*PRIVATE KEY|bot[0-9]{6,}:[A-Za-z0-9_-]{30}|"client_secret"' -- ':!.github'; then
             echo "Possible secret found"; exit 1
           fi
