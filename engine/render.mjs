@@ -23,6 +23,7 @@ const PRESET = process.env.X264_PRESET || 'veryfast';
 function resolve(url) {
   const u = decodeURIComponent(url.split('?')[0]);
   for (const [pre, dir] of Object.entries(FONTS)) if (u.startsWith(pre)) return path.join(dir, path.basename(u));
+  if (u.startsWith('/assets/fluent/')) { const base = path.resolve(process.env.YTF_ASSETS || '/srv/ytf/data/assets', 'fluent'); const f = path.join(base, path.basename(u)); return f.startsWith(base) ? f : null; }
   if (u.startsWith('/job/')) { const f = path.join(path.resolve(JOB), u.slice(5)); return f.startsWith(path.resolve(JOB)) ? f : null; }
   const f = path.join(ENGINE, u === '/' ? 'page.html' : u); return f.startsWith(ENGINE) ? f : null;
 }

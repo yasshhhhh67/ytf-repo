@@ -118,22 +118,29 @@ Y.arrow = (x1, y1, x2, y2, color, lw, k = 1, head = 16) => {
   c.restore();
 };
 
-// Static background (no drift, so held frames can be reused by the renderer).
-Y.background = (accent) => {
+// Channel style "Blueprint": deep navy, faint engineering grid, one electric-blue accent. Static (no drift), so
+// held frames can be reused by the renderer. Same on every video: variety comes from the diagrams, not the colours.
+Y.background = () => {
   const c = Y.c, W = Y.W, H = Y.H;
-  const g = c.createLinearGradient(0, 0, W * 0.4, H); g.addColorStop(0, Y.BRAND.bg1); g.addColorStop(1, Y.BRAND.bg0);
-  c.fillStyle = g; c.fillRect(0, 0, W, H);
-  if (!Y._grid || Y._grid.w !== W) {
+  if (!Y._bg || Y._bg.w !== W || Y._bg.h !== H) {
     const off = document.createElement('canvas'); off.width = W; off.height = H; const o = off.getContext('2d');
-    o.fillStyle = 'rgba(140,160,255,0.09)'; const step = 44 * Y.S;
-    for (let y = step / 2; y < H; y += step) for (let x = step / 2; x < W; x += step) { o.beginPath(); o.arc(x, y, 1.8 * Y.S, 0, 6.283); o.fill(); }
-    Y._grid = { w: W, cv: off };
+    const g = o.createLinearGradient(0, 0, W * 0.35, H); g.addColorStop(0, '#0d1838'); g.addColorStop(1, '#050914');
+    o.fillStyle = g; o.fillRect(0, 0, W, H);
+    const minor = 30 * Y.S, major = minor * 4;
+    o.lineWidth = 1; o.strokeStyle = 'rgba(120,150,255,0.055)';
+    for (let x = 0; x <= W; x += minor) { o.beginPath(); o.moveTo(x + 0.5, 0); o.lineTo(x + 0.5, H); o.stroke(); }
+    for (let y = 0; y <= H; y += minor) { o.beginPath(); o.moveTo(0, y + 0.5); o.lineTo(W, y + 0.5); o.stroke(); }
+    o.strokeStyle = 'rgba(120,150,255,0.11)';
+    for (let x = 0; x <= W; x += major) { o.beginPath(); o.moveTo(x + 0.5, 0); o.lineTo(x + 0.5, H); o.stroke(); }
+    for (let y = 0; y <= H; y += major) { o.beginPath(); o.moveTo(0, y + 0.5); o.lineTo(W, y + 0.5); o.stroke(); }
+    const glow = (x, y, r, col, a) => { const gg = o.createRadialGradient(x, y, 0, x, y, r); gg.addColorStop(0, col); gg.addColorStop(1, 'rgba(0,0,0,0)'); o.globalAlpha = a; o.fillStyle = gg; o.fillRect(x - r, y - r, r * 2, r * 2); o.globalAlpha = 1; };
+    glow(W * 0.85, H * 0.1, Math.max(W, H) * 0.5, Y.BRAND.accent, 0.20);
+    glow(W * 0.08, H * 0.95, Math.max(W, H) * 0.45, Y.BRAND.accent2, 0.08);
+    const v = o.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.78);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.5)'); o.fillStyle = v; o.fillRect(0, 0, W, H);
+    Y._bg = { w: W, h: H, cv: off };
   }
-  c.drawImage(Y._grid.cv, 0, 0);
-  Y.glow(W * 0.85, H * 0.12, Math.max(W, H) * 0.45, accent || Y.BRAND.accent, 0.22);
-  Y.glow(W * 0.1, H * 0.92, Math.max(W, H) * 0.4, Y.BRAND.accent2, 0.10);
-  const v = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
-  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.45)'); c.fillStyle = v; c.fillRect(0, 0, W, H);
+  c.drawImage(Y._bg.cv, 0, 0);
 };
 
 // Small mono label (e.g. "STEP 2", "SOURCE: ...")
@@ -151,3 +158,63 @@ Y.revealAt = (scene, i, n, start = 0.25, spread = null) => {
   const d = scene.end - scene.start; const span = spread ?? Math.min(d * 0.55, 0.9 * n);
   return start + (n <= 1 ? 0 : (span * i) / (n - 1));
 };
+
+// ---------- graphics preset: Microsoft Fluent Emoji (MIT), loaded from /assets/fluent/<key>.svg ----------
+Y.G = {};
+Y.loadGraphics = async (keys) => {
+  await Promise.all([...new Set(keys)].map((k) => new Promise((res) => {
+    const im = new Image(); im.onload = () => { Y.G[k] = im; res(); };
+    im.onerror = () => { Y.reports.push({ kind: 'missing-graphic', text: k }); res(); };
+    im.src = `/assets/fluent/${k}.svg`;
+  })));
+};
+// keys of every "graphic" field anywhere in an object
+Y.graphicKeys = (o, out = []) => {
+  if (Array.isArray(o)) o.forEach((x) => Y.graphicKeys(x, out));
+  else if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { if ((k === 'graphic' || k === 'packet') && typeof v === 'string') out.push(v); else Y.graphicKeys(v, out); }
+  return out;
+};
+
+// Motion presets (named after the Animate.css set). enter(preset, k) with k = 0..1 entrance progress;
+// idle(preset, t) runs continuously. Both return {dx, dy, s, r, a}.
+Y.enter = (preset, k) => {
+  k = Y.clamp(k); const e = Y.eo(k);
+  switch (preset) {
+    case 'bounceIn': return { dx: 0, dy: 0, s: Y.lerp(0.3, 1, Y.eob(k)), r: 0, a: Y.clamp(k * 3) };
+    case 'zoomIn': return { dx: 0, dy: 0, s: Y.lerp(0.5, 1, e), r: 0, a: e };
+    case 'fadeInUp': return { dx: 0, dy: (1 - e) * 80, s: 1, r: 0, a: e };
+    case 'slideInLeft': return { dx: -(1 - e) * 300, dy: 0, s: 1, r: 0, a: e };
+    case 'slideInRight': return { dx: (1 - e) * 300, dy: 0, s: 1, r: 0, a: e };
+    case 'rotateIn': return { dx: 0, dy: 0, s: Y.lerp(0.6, 1, e), r: (1 - e) * -0.8, a: e };
+    default: return { dx: 0, dy: 0, s: Y.lerp(0.6, 1, Y.eob(k)), r: 0, a: Y.clamp(k * 2) };        // popIn
+  }
+};
+Y.idle = (preset, t, seed = 0) => {
+  const ph = seed * 1.7;
+  switch (preset) {
+    case 'float': return { dx: 0, dy: Math.sin(t * 1.6 + ph) * 12, s: 1, r: 0, a: 1 };
+    case 'pulse': return { dx: 0, dy: 0, s: 1 + Math.sin(t * 4 + ph) * 0.05, r: 0, a: 1 };
+    case 'wiggle': return { dx: 0, dy: 0, s: 1, r: Math.sin(t * 6 + ph) * 0.08, a: 1 };
+    case 'spin': return { dx: 0, dy: 0, s: 1, r: t * 1.2, a: 1 };
+    case 'bob': return { dx: 0, dy: -Math.abs(Math.sin(t * 5 + ph)) * 14, s: 1, r: 0, a: 1 };
+    case 'headShake': return { dx: Math.sin(t * 14 + ph) * 6 * Math.max(0, Math.sin(t * 0.9 + ph)), dy: 0, s: 1, r: 0, a: 1 };
+    default: return { dx: 0, dy: 0, s: 1, r: 0, a: 1 };
+  }
+};
+// Draw graphic `key` centred at (x, y), `size` px wide, with optional entrance + idle motion.
+Y._sprites = {};
+Y.sprite = (key) => {                                      // rasterise each SVG once (768 px), then scale the bitmap
+  if (Y._sprites[key]) return Y._sprites[key];
+  const im = Y.G[key]; if (!im) return null;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 768; cv.getContext('2d').drawImage(im, 0, 0, 768, 768);
+  return (Y._sprites[key] = cv);
+};
+Y.graphic = (key, x, y, size, { enterPreset = 'popIn', k = 1, idlePreset = 'none', t = 0, seed = 0, alpha = 1 } = {}) => {
+  const im = Y.sprite(key); if (!im) { Y.reports.push({ kind: 'missing-graphic', text: key }); return; }
+  const e = Y.enter(enterPreset, k), i = Y.idle(idlePreset, t, seed); const c = Y.c;
+  if (e.a <= 0) return;
+  c.save(); c.globalAlpha *= alpha * e.a * i.a; c.translate(x + e.dx + i.dx, y + e.dy + i.dy); c.rotate(e.r + i.r);
+  const s = size * e.s * i.s; c.drawImage(im, -s / 2, -s / 2, s, s); c.restore();
+};
+// Soft shadow ellipse under a graphic, gives illustrations weight on the dark background.
+Y.shadow = (x, y, w, a = 0.35) => { const c = Y.c; c.save(); c.globalAlpha *= a; c.fillStyle = '#000'; c.beginPath(); c.ellipse(x, y, w / 2, w / 9, 0, 0, 6.283); c.fill(); c.restore(); };

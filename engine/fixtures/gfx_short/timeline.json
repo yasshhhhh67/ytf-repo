@@ -1,0 +1,170 @@
+{
+ "format": "short",
+ "width": 1080,
+ "height": 1920,
+ "fps": 30,
+ "duration": 40.0,
+ "scenes": [
+  {
+   "id": "s01",
+   "template": "kinetic_text",
+   "start": 0.0,
+   "end": 5.0,
+   "params": {
+    "lines": [
+     "A GPU is dumb.",
+     "That's its superpower."
+    ],
+    "emphasis": "superpower",
+    "graphic": "robot"
+   }
+  },
+  {
+   "id": "s02",
+   "template": "versus_graphics",
+   "start": 5.0,
+   "end": 10.0,
+   "params": {
+    "title": "Two ways to do math",
+    "left": {
+     "graphic": "brain",
+     "label": "One genius",
+     "sub": "Fast, but one at a time"
+    },
+    "right": {
+     "graphic": "stadium",
+     "label": "A stadium",
+     "sub": "Slow, but all at once"
+    },
+    "winner": "right"
+   }
+  },
+  {
+   "id": "s03",
+   "template": "crowd",
+   "start": 10.0,
+   "end": 15.0,
+   "params": {
+    "title": "Thousands of tiny workers",
+    "graphic": "construction-worker",
+    "count": 48,
+    "label": "Each does one simple sum",
+    "contrast": {
+     "graphic": "man-technologist",
+     "label": "A CPU core"
+    }
+   }
+  },
+  {
+   "id": "s04",
+   "template": "hero_graphic",
+   "start": 15.0,
+   "end": 20.0,
+   "params": {
+    "title": "The graphics card",
+    "graphic": "desktop-computer",
+    "callouts": [
+     "Thousands of cores",
+     "Made for games",
+     "Now runs AI"
+    ],
+    "motion": "float"
+   }
+  },
+  {
+   "id": "s05",
+   "template": "graphic_steps",
+   "start": 20.0,
+   "end": 25.0,
+   "params": {
+    "title": "How AI answers you",
+    "steps": [
+     {
+      "graphic": "speech-balloon",
+      "label": "Words become numbers"
+     },
+     {
+      "graphic": "abacus",
+      "label": "Billions of sums"
+     },
+     {
+      "graphic": "light-bulb",
+      "label": "Best next word"
+     }
+    ]
+   }
+  },
+  {
+   "id": "s06",
+   "template": "graphic_flow",
+   "start": 25.0,
+   "end": 30.0,
+   "params": {
+    "title": "Your question travels",
+    "nodes": [
+     {
+      "graphic": "mobile-phone",
+      "label": "Your phone"
+     },
+     {
+      "graphic": "satellite-antenna",
+      "label": "The internet"
+     },
+     {
+      "graphic": "factory",
+      "label": "AI data center"
+     }
+    ],
+    "packet": "envelope"
+   }
+  },
+  {
+   "id": "s07",
+   "template": "big_number",
+   "start": 30.0,
+   "end": 35.0,
+   "params": {
+    "value": 1000,
+    "suffix": "cores",
+    "label": "working at the same time",
+    "graphic": "high-voltage"
+   }
+  },
+  {
+   "id": "s08",
+   "template": "end_card",
+   "start": 35.0,
+   "end": 40.0,
+   "params": {
+    "line": "Simple workers, together, win.",
+    "graphic": "trophy"
+   }
+  }
+ ],
+ "captions": [
+  {
+   "s": 5.0,
+   "e": 5.95,
+   "text": "A GPU IS",
+   "hi": "GPU"
+  },
+  {
+   "s": 6.0,
+   "e": 6.95,
+   "text": "ITS SUPER POWER",
+   "hi": "SUPER"
+  },
+  {
+   "s": 7.0,
+   "e": 7.95,
+   "text": "ONE GENIUS OR",
+   "hi": "GENIUS"
+  },
+  {
+   "s": 8.0,
+   "e": 8.95,
+   "text": "A WHOLE STADIUM",
+   "hi": "WHOLE"
+  }
+ ]
+}

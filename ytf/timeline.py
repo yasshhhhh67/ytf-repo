@@ -3,7 +3,6 @@ import re
 
 from .common import read_json, write_json
 
-ACCENTS = ['#3d6bff', '#7c5cff', '#0ea5e9', '#14b8a6']
 STOP = set('the a an and or of to in on at for is are was were be it its this that with as by from but so if then than you your we our they their can will just how what why'.split())
 LIST_KEYS = {'process_flow': 'steps', 'bar_chart': 'bars', 'kinetic_text': 'lines'}
 
@@ -29,7 +28,7 @@ def _captions(words):
         hi = max(content, key=lambda w: len(_n(w)), default='')
         hi = re.sub(r'[.,;:!?]+$', '', hi)
         end = groups[i + 1][0]['s'] if i + 1 < len(groups) and groups[i + 1][0]['s'] - g[-1]['e'] < 0.6 else g[-1]['e'] + 0.25
-        out.append({'s': round(g[0]['s'] - 0.04, 3), 'e': round(end - 0.02, 3), 'text': txt, 'hi': hi})
+        out.append({'s': round(g[0]['s'] - 0.04, 3), 'e': round(end - 0.06, 3), 'text': txt, 'hi': hi})
     return out
 
 
@@ -39,8 +38,18 @@ def run(proj, P):
     words = read_json(P / 'audio' / 'words.json'); script = read_json(P / 'script' / 'final.json')
     segt = {s['id']: s for s in meta['segments']}; dur = meta['duration']
     scenes = []
+    occ = {}                                         # segment id -> scenes showing it (a segment may span scenes)
     for i, sc in enumerate(board['scenes']):
-        start = 0.0 if i == 0 else max(0.0, segt[sc['segments'][0]]['start'] - 0.12)
+        for g in sc['segments']:
+            occ.setdefault(g, []).append(i)
+    seg_words = {g: [w for w in words if w['seg'] == g] for g in segt}
+    for i, sc in enumerate(board['scenes']):
+        g0 = sc['segments'][0]; part, parts = occ[g0].index(i), len(occ[g0])
+        if part == 0:
+            t = segt[g0]['start']
+        else:                                         # continue mid-segment: cut at a word boundary
+            ws = seg_words[g0]; t = ws[min(len(ws) - 1, round(part * len(ws) / parts))]['s']
+        start = 0.0 if i == 0 else max(0.0, t - 0.12)
         scenes.append({'id': f's{i + 1:02d}', 'template': sc['template'], 'params': sc['params'], 'segments': sc['segments'], 'start': round(start, 3)})
     for i, s in enumerate(scenes):
         s['end'] = scenes[i + 1]['start'] if i + 1 < len(scenes) else dur
@@ -65,7 +74,7 @@ def run(proj, P):
             if ch not in seen:
                 seen.add(ch); chapters.append({'t': 0.0 if not chapters else s['start'], 'title': titles.get(ch, ch)})
     tl = {'format': fmt, 'width': W, 'height': H, 'fps': 30, 'duration': dur,
-          'accent': ACCENTS[sum(map(ord, proj['id'])) % len(ACCENTS)], 'scenes': scenes,
+          'scenes': scenes,
           'captions': _captions(words) if fmt == 'short' else [], 'chapters': chapters}
     write_json(P / 'render' / 'timeline.json', tl)
     lens = [s['end'] - s['start'] for s in scenes]

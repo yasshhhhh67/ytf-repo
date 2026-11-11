@@ -1,9 +1,9 @@
 {
  "width": 1280,
  "height": 720,
- "accent": "#3d6bff",
  "params": {
-  "text": "How a GPU Does AI Math",
-  "tag": "explained"
+  "text": "Why GPUs Win at AI",
+  "tag": "explained",
+  "graphic": "robot"
  }
 }

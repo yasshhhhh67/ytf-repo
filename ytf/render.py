@@ -54,8 +54,8 @@ def run_stage(proj, P):
          '-c:v', 'copy', '-c:a', 'aac', '-b:a', '320k', '-ar', '48000', '-movflags', '+faststart', '-shortest', str(job / 'master.mp4')])
     # thumbnail + contact sheet
     W, H = (1280, 720) if proj['format'] == 'long' else (1080, 1920)
-    write_json(job / 'thumb.json', {'width': W, 'height': H, 'accent': tl['accent'],
-                                    'params': {'text': meta['thumbnail_text'], 'tag': meta.get('thumbnail_tag', '')}})
+    write_json(job / 'thumb.json', {'width': W, 'height': H,
+                                    'params': {'text': meta['thumbnail_text'], 'tag': meta.get('thumbnail_tag', ''), 'graphic': meta.get('thumbnail_graphic')}})
     _node([str(job), 'thumb', str(job / 'thumb.jpg')], 600)
     _node([str(job), 'sheet', str(P / 'qa' / 'contact.jpg'), '2' if proj['format'] == 'short' else '6', '8' if proj['format'] == 'short' else '6'], 3600)
     os.remove(job / 'video.mp4')

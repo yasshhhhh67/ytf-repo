@@ -28,16 +28,19 @@ def _extract_json(text):
     return json.loads(t[a:b + 1])
 
 
-def _agy(prompt, timeout):
+CHECK_MODEL = 'Claude Sonnet 4.6 (Thinking)'      # independent checker; offered on this plan until 18 Nov 2026
+
+
+def _agy(prompt, timeout, model='', name='agy'):
     if len(prompt.encode()) > AGY_MAX_BYTES:
         raise LLMError('prompt too large for agy')
-    r = subprocess.run(['sudo', '-n', '-H', '-u', 'ytf-llm', '/usr/local/libexec/ytf-agy'], input=prompt,
-                       capture_output=True, text=True, timeout=timeout)
+    r = subprocess.run(['sudo', '-n', '-H', '-u', 'ytf-llm', '/usr/local/libexec/ytf-agy'] + ([model] if model else []),
+                       input=prompt, capture_output=True, text=True, timeout=timeout)
     if r.returncode:
         err = (r.stderr or r.stdout)[-400:]
-        if re.search(r'auth|sign.?in|login|quota|limit|429|permission', err, re.I):
-            _broken.add('agy')
-        raise LLMError(f'agy exit {r.returncode}: {err}')
+        if re.search(r'auth|sign.?in|login|quota|limit|429|permission|not recognized|not allowed|not available', err, re.I):
+            _broken.add(name)
+        raise LLMError(f'{name} exit {r.returncode}: {err}')
     out = json.loads(r.stdout)
     if out.get('status') != 'SUCCESS':
         raise LLMError(f'agy status {out.get("status")}')
@@ -65,7 +68,7 @@ def _gemini(prompt, timeout):
         raise LLMError(f'gemini empty response: {str(d)[:300]}')
 
 
-PROVIDERS = {'agy': _agy, 'gemini': _gemini}
+PROVIDERS = {'agy': _agy, 'agy_check': lambda p, t: _agy(p, t, CHECK_MODEL, 'agy_check'), 'gemini': _gemini}
 
 
 def _ledger(**rec):

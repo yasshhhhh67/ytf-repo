@@ -1,14 +1,16 @@
 """Title, description (summary, chapters, sources, attributions), tags and thumbnail text."""
 from . import llm
 from .common import read_json, write_json
+from .templates import GRAPHICS
 
 META_SCHEMA = {'type': 'object', 'additionalProperties': False,
-               'required': ['title', 'summary', 'tags', 'thumbnail_text', 'thumbnail_tag'],
+               'required': ['title', 'summary', 'tags', 'thumbnail_text', 'thumbnail_tag', 'thumbnail_graphic'],
                'properties': {'title': {'type': 'string', 'minLength': 10, 'maxLength': 70},
                               'summary': {'type': 'string', 'minLength': 40, 'maxLength': 500},
                               'tags': {'type': 'array', 'minItems': 3, 'maxItems': 10, 'items': {'type': 'string', 'maxLength': 30}},
                               'thumbnail_text': {'type': 'string', 'minLength': 3, 'maxLength': 28},
-                              'thumbnail_tag': {'type': 'string', 'maxLength': 12}}}
+                              'thumbnail_tag': {'type': 'string', 'maxLength': 12},
+                              'thumbnail_graphic': {'enum': GRAPHICS}}}
 
 
 def _ts(t):
@@ -26,6 +28,7 @@ channel "Future Mechanism" (AI & technology explained).
 - tags: 5-10 search phrases
 - thumbnail_text: 2-4 punchy words for the thumbnail (must be true to the content)
 - thumbnail_tag: one short label like "Explained"
+- thumbnail_graphic: the illustration key (from this list) that best shows the video's idea: {', '.join(GRAPHICS)}
 
 Narration:
 {narration}""", META_SCHEMA)
@@ -36,7 +39,7 @@ Narration:
         lines += ['Chapters:'] + [f'{_ts(c["t"])} {c["title"]}' for c in tl['chapters']] + ['']
     if used:
         lines += ['Sources:'] + [f'[{i + 1}] {src[s]["title"]} ({src[s]["publisher"]}) {src[s]["url"]}' for i, s in enumerate(used)] + ['']
-    lines += ['Narration uses a synthetic voice; all animations are original and made in code.']
+    lines += ['Narration uses a synthetic voice. Animations made in code; illustrations: Microsoft Fluent Emoji (MIT License).']
     if proj['format'] == 'short':
         lines += ['', '#Shorts #AI #Technology']
     desc = '\n'.join(lines)

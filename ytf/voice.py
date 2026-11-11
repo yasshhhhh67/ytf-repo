@@ -37,7 +37,8 @@ def synth(proj, P):
     k = Kokoro.from_session(ort.InferenceSession(str(MODELS / 'kokoro' / 'kokoro-v1.0.int8.onnx'), so, providers=['CPUExecutionProvider']),
                             str(MODELS / 'kokoro' / 'voices-v1.0.bin'))
     (P / 'audio' / 'seg').mkdir(parents=True, exist_ok=True)
-    parts = [np.zeros(int(GAP['lead'] * SR), np.float32)]; t = GAP['lead']; segs = []; prev_ch = None
+    lead = 0.1 if proj['format'] == 'short' else GAP['lead']
+    parts = [np.zeros(int(lead * SR), np.float32)]; t = lead; segs = []; prev_ch = None
     for i, s in enumerate(script['segments']):
         if prev_ch and s['chapter'] != prev_ch:
             extra = np.zeros(int((GAP['chapter'] - GAP['segment']) * SR), np.float32); parts.append(extra); t += len(extra) / SR

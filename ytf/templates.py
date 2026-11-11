@@ -1,8 +1,16 @@
 """Scene template catalogue: purpose text for the storyboard prompt + JSON Schemas for parameter validation.
 Must stay in sync with engine/templates.js."""
 
+import json, re
+from pathlib import Path
+
 S = lambda n: {'type': 'string', 'minLength': 1, 'maxLength': n}
 CUE = {'type': 'string', 'maxLength': 30, 'description': 'one word from the narration this item appears on'}
+GRAPHIC = {'type': 'string', 'pattern': '^[a-z0-9-]{2,40}$', 'description': 'a key from the GRAPHICS list'}
+MOTION = {'enum': ['none', 'float', 'pulse', 'wiggle', 'spin', 'bob', 'headShake']}
+# Graphics preset: Microsoft Fluent Emoji (MIT). Keys = slug of the curated names in tools/assets/fluent_catalog.json.
+_CAT = Path(__file__).resolve().parent.parent / 'tools' / 'assets' / 'fluent_catalog.json'
+GRAPHICS = sorted({re.sub(r'[^a-z0-9]+', '-', n.lower()).strip('-') for n in json.loads(_CAT.read_text())})
 
 
 def obj(props, required, **kw):
@@ -12,12 +20,12 @@ def obj(props, required, **kw):
 TEMPLATES = {
     'title_card': {
         'purpose': 'Video title or chapter opener. Use at the start of each chapter in long videos.',
-        'schema': obj({'kicker': S(22), 'title': S(48), 'subtitle': S(70)}, ['title']),
+        'schema': obj({'kicker': S(22), 'title': S(48), 'subtitle': S(70), 'graphic': GRAPHIC}, ['title']),
     },
     'kinetic_text': {
-        'purpose': 'Big statement / hook / punchline in 1-4 short lines, one emphasised word. Use for hooks and key takeaways.',
+        'purpose': 'Big statement / hook / punchline in 1-4 short lines, one emphasised word, optional illustration above. Use for hooks and key takeaways.',
         'schema': obj({'lines': {'type': 'array', 'minItems': 1, 'maxItems': 4, 'items': S(26)},
-                       'emphasis': S(18)}, ['lines']),
+                       'emphasis': S(18), 'graphic': GRAPHIC}, ['lines']),
     },
     'labeled_diagram': {
         'purpose': 'How parts connect: 2-7 labelled boxes with arrows (data flow, system architecture, cause->effect).',
@@ -44,7 +52,7 @@ TEMPLATES = {
     'big_number': {
         'purpose': 'One striking number that is stated in the narration, counted up on screen.',
         'schema': obj({'value': {'type': 'number'}, 'prefix': S(3), 'suffix': S(12), 'decimals': {'type': 'integer', 'minimum': 0, 'maximum': 2},
-                       'label': S(44), 'context': S(70)}, ['value', 'label']),
+                       'label': S(44), 'context': S(70), 'graphic': GRAPHIC}, ['value', 'label']),
     },
     'bar_chart': {
         'purpose': 'Compare 2-6 quantities. Every value MUST appear in the narration or its cited evidence.',
@@ -59,8 +67,8 @@ TEMPLATES = {
         'schema': obj({'title': S(30), 'items': {'type': 'array', 'minItems': 2, 'maxItems': 5, 'items': S(42)}}, ['title', 'items']),
     },
     'end_card': {
-        'purpose': 'Final scene only: closing line and an optional teaser for the next video.',
-        'schema': obj({'line': S(48), 'next': S(56)}, ['line']),
+        'purpose': 'Final scene only: the closing payoff line (no teasers for other videos).',
+        'schema': obj({'line': S(48), 'graphic': GRAPHIC}, ['line']),
     },
     'parallel_grid': {
         'purpose': 'Sequential vs parallel processing: few big cores working one-by-one vs many small cores at once.',
@@ -76,19 +84,57 @@ TEMPLATES = {
                        'b': {'type': 'array', 'minItems': 2, 'maxItems': 3, 'items': {'type': 'array', 'minItems': 2, 'maxItems': 3, 'items': {'type': 'integer', 'minimum': 0, 'maximum': 9}}},
                        'caption': S(60)}, ['a', 'b']),
     },
+    'hero_graphic': {
+        'purpose': 'ONE big illustration of the thing being discussed (or the analogy), with 0-3 short callout labels. Great for introducing an object or analogy.',
+        'schema': obj({'title': S(40), 'graphic': GRAPHIC, 'callouts': {'type': 'array', 'maxItems': 3, 'items': S(22)},
+                       'caption': S(60), 'motion': MOTION}, ['graphic']),
+    },
+    'versus_graphics': {
+        'purpose': 'Two illustrations side by side (A vs B) with labels; optional winner. Best for analogies and contrasts (one genius vs a crowd).',
+        'schema': obj({'title': S(40),
+                       'left': obj({'graphic': GRAPHIC, 'label': S(22), 'sub': S(40), 'motion': MOTION}, ['graphic', 'label']),
+                       'right': obj({'graphic': GRAPHIC, 'label': S(22), 'sub': S(40), 'motion': MOTION}, ['graphic', 'label']),
+                       'winner': {'enum': ['left', 'right', 'none']}}, ['left', 'right']),
+    },
+    'crowd': {
+        'purpose': 'Many small copies of one illustration working at once (e.g. 64 cooks, 100 workers), optionally next to one big contrasting illustration. Shows "many simple things in parallel".',
+        'schema': obj({'title': S(40), 'graphic': GRAPHIC, 'count': {'type': 'integer', 'minimum': 4, 'maximum': 120}, 'label': S(40),
+                       'contrast': obj({'graphic': GRAPHIC, 'label': S(30)}, ['graphic', 'label'])}, ['graphic', 'count', 'label']),
+    },
+    'graphic_steps': {
+        'purpose': '2-4 steps, each shown as an illustration with a short label, connected by arrows.',
+        'schema': obj({'title': S(40), 'steps': {'type': 'array', 'minItems': 2, 'maxItems': 4, 'items': obj(
+            {'graphic': GRAPHIC, 'label': S(30), 'cue': CUE}, ['graphic', 'label'])}}, ['steps']),
+    },
+    'graphic_flow': {
+        'purpose': 'Something travelling between 2-4 illustrated places/things (data from phone to server, power from plug to chip); optional moving packet illustration.',
+        'schema': obj({'title': S(40), 'nodes': {'type': 'array', 'minItems': 2, 'maxItems': 4, 'items': obj(
+            {'graphic': GRAPHIC, 'label': S(24)}, ['graphic', 'label'])}, 'packet': GRAPHIC}, ['nodes']),
+    },
 }
 
 
 def catalogue_text():
     lines = []
     for name, t in TEMPLATES.items():
-        lines.append(f'- {name}: {t["purpose"]}\n  params schema: {t["schema"]}')
+        lines.append(f'- {name}: {t["purpose"]}\n  params schema: {json.dumps(t["schema"], separators=(",", ":"))}')
+    lines.append('\nGRAPHICS (illustration keys for every "graphic"/"packet" field; use ONLY these exact keys):\n' + ', '.join(GRAPHICS))
     return '\n'.join(lines)
+
+
+def _graphic_values(o, out):
+    if isinstance(o, dict):
+        for k, v in o.items():
+            if k in ('graphic', 'packet') and isinstance(v, str): out.append(v)
+            else: _graphic_values(v, out)
+    elif isinstance(o, list):
+        for v in o: _graphic_values(v, out)
+    return out
 
 
 def semantic_errors(name, p):
     """Checks a JSON Schema can't express."""
-    errs = []
+    errs = [f'{name}: unknown graphic "{g}" (use a key from the GRAPHICS list)' for g in _graphic_values(p, []) if g not in GRAPHICS]
     if name == 'labeled_diagram':
         ids = {n['id'] for n in p['nodes']}
         if len(ids) != len(p['nodes']):

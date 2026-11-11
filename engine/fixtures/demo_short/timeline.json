@@ -4,7 +4,6 @@
  "height": 1920,
  "fps": 30,
  "duration": 54.5,
- "accent": "#3d6bff",
  "scenes": [
   {
    "id": "s01",
@@ -24,11 +23,11 @@
    "end": 9.0,
    "params": {
     "lines": [
-     "Every word you type",
-     "becomes a list",
-     "of numbers."
+     "Your phone does",
+     "a trillion sums",
+     "to answer you."
     ],
-    "emphasis": "numbers"
+    "emphasis": "trillion"
    }
   },
   {
@@ -231,8 +230,7 @@
    "start": 50.0,
    "end": 54.5,
    "params": {
-    "line": "Now you know how a GPU thinks.",
-    "next": "Next: why AI chips run so hot"
+    "line": "Now you know how a GPU thinks."
    }
   }
  ],

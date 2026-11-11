@@ -41,8 +41,14 @@ def run_stage(proj, P):
     lay = read_json(P / 'qa' / 'layout.json', {'reports': [], 'pageErrors': []})
     if lay['reports'] or lay['pageErrors']: hard.append(f'layout problems: {lay["reports"][:3]}')
     script = read_json(P / 'script' / 'final.json'); vr = read_json(P / 'script' / 'verify_report.json')
-    if vr and vr[-1]['issues']: hard.append('unverified claims remain')
+    last = next((r for r in reversed(vr or []) if 'issues' in r), {'issues': {}})
+    dropped = next((r['dropped'] for r in (vr or []) if 'dropped' in r), {})
+    if last['issues'] and not dropped: hard.append('unverified claims remain')
+    if dropped: soft.append(f'{len(dropped)} sentence(s) removed because they could not be verified: {list(dropped)}')
     info['claims'] = sum(len(s['claims']) for s in script['segments'])
+    pol = script.get('polish') or {}
+    info['clarity'] = pol.get('score')
+    if pol.get('notes'): soft.append(f'clarity reviewer notes ({len(pol["notes"])}): ' + ' | '.join(pol['notes'][:2]))
     pron = read_json(P / 'qa' / 'pronunciation.json', [])
     badp = [q for q in pron if q['wer'] > 0.2]
     if badp: soft.append(f'{len(badp)} segment(s) may be mispronounced: ' + '; '.join(f'{q["seg"]} heard "{q["heard"][:60]}"' for q in badp[:3]))

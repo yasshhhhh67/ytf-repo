@@ -43,6 +43,7 @@ def _run(pid, until=None, redo=None):
     if redo:
         for n in NAMES[NAMES.index(redo):]:
             st['done'].pop(n, None)
+        write_json(P / 'state.json', st)          # persist now so nobody sees stale "done" marks
     for name, fn in STAGES:
         if name in st['done']:
             continue
@@ -72,8 +73,9 @@ def main():
     if x.cmd == 'new':
         _new(x.format, x.topic)
     elif x.cmd == 'derive-short':
-        if 'verify' not in read_json(PROJECTS / x.parent / 'state.json')['done']:
-            sys.exit('parent script must be verified first')
+        # Shorts use only the parent's outline facts (each quote already checked against its source)
+        if not (PROJECTS / x.parent / 'script' / 'final.json').exists() and not (PROJECTS / x.parent / 'script' / 'v1.json').exists():
+            sys.exit('parent needs a written script (with its fact list) first')
         _new('short', x.angle, parent=x.parent)
     elif x.cmd == 'run':
         _run(x.project, x.until, x.redo)
