@@ -59,8 +59,10 @@
       const i = sceneAt(t), s = scenes[i], lt = localT(i, t);
       Y.background();
       drawScene(L1, s, lt);
-      const k = i > 0 && lt < TR ? Y.eo(lt / TR) : 1;
-      if (k < 1) { const p = scenes[i - 1]; drawScene(L2, p, p.end - p.start); main.save(); main.globalAlpha = 1 - k; main.drawImage(L2.canvas, 0, 0); main.restore(); }
+      // dip transition: the old scene fades out first, then the new one rises in (headings never overlap)
+      const k = i > 0 && lt < TR ? Y.eo(Y.seg(lt, 0.1, TR)) : 1;
+      const out = i > 0 && lt < 0.12 ? 1 - Y.seg(lt, 0, 0.12) : 0;
+      if (out > 0) { const p = scenes[i - 1]; drawScene(L2, p, p.end - p.start); main.save(); main.globalAlpha = out; main.drawImage(L2.canvas, 0, 0); main.restore(); }
       main.save(); main.globalAlpha = k; main.translate(0, (1 - k) * 36 * Y.S); main.drawImage(L1.canvas, 0, 0); main.restore();
       if (TL.format === 'short' && s.template !== 'kinetic_text') drawCaption(t);   // the words are already on screen
     };

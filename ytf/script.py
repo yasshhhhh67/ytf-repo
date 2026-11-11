@@ -107,10 +107,13 @@ Return:
 - title: the working title
 - hook: the opening 1-2 sentences: a concrete, surprising image or fact that makes people stay (true, from the facts)
 - big_idea: the single insight the whole video builds to
-- chapters (5-8): c1 = cold open + roadmap; middle chapters build understanding step by step (one idea each, with a
-  vivid everyday analogy); one chapter corrects a common misconception; one shows why it matters in daily life; the last
-  is a short recap + sign-off. For each: title, goal, beats (the explanation steps), analogy, and the fact ids it uses.
-- facts: the 10-20 ESSENTIAL facts the story needs (not trivia), each in plain language, with the source id and a quote
+- chapters (5-7): c1 = cold open + roadmap; then AT MOST 4 core ideas, one per chapter, each one explainable to a
+  curious 12-year-old with a vivid everyday analogy; one chapter corrects a common misconception; one shows why it
+  matters in daily life; the last is a short recap + sign-off. For each: title, goal, beats (the explanation steps),
+  analogy, and the fact ids it uses.
+- DROP anything that can only be explained with jargon (rounding modes, register names, architecture acronyms,
+  instruction-level details, product model numbers). Depth comes from explaining a few ideas really well, not many.
+- facts: the 8-16 ESSENTIAL facts the story needs (not trivia), each in plain language, with the source id and a quote
   copied EXACTLY (character for character, 15-400 chars) from that source's text.
 
 {VOICE_GUIDE}
@@ -138,10 +141,10 @@ CLARITY_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': [
                                                     'problem': {'type': 'string', 'maxLength': 400}, 'fix': {'type': 'string', 'maxLength': 400}}}}}}
 
 
-def clarity_review(segments, fmt, raw=False):
+def clarity_review(segments, fmt, raw=False, hook=True, context=''):
     """An independent model reads the script as a 12-year-old would. Returns a list of problems (empty = pass)."""
     r = llm.complete_json('clarity_review', f"""You are a curious 12-year-old with no tech background watching this
-{'YouTube Short' if fmt == 'short' else 'YouTube video'} narration. Be honest and demanding.
+{'YouTube Short' if fmt == 'short' else 'YouTube video'} narration. Be honest and demanding. {context}
 - score: 1-10, how easy it is to follow and understand on first listen (10 = crystal clear).
 - hook_ok: after hearing only the first sentence, would you keep watching? (true only if it creates real curiosity)
 - better_hook: if hook_ok is false, a stronger first sentence of at most 9 words that is still true; else ""
@@ -157,30 +160,30 @@ Narration (id: text):
     errs = []
     if r['score'] < 7:
         errs.append(f'a 12-year-old found this hard to follow (clarity {r["score"]}/10, need 7+); simplify')
-    if not r['hook_ok']:
+    if hook and not r['hook_ok']:
         errs.append('the first sentence does not hook the viewer; write a stronger, more surprising hook')
     errs += [f'{i["id"]}: {i["problem"]} -> try: {i["fix"]}' for i in r['issues'] if i['severity'] == 'high']
     return (errs, r) if raw else errs
 
 
-def polish(segments, fmt, rounds=2):
+def polish(segments, fmt, rounds=2, hook=True, context='', min_score=7):
     """Review -> apply the reviewer's concrete rewrites to flagged sentences -> review again. Converges much faster
     than regenerating the whole script. Facts stay tagged; the verify stage re-checks the final wording."""
     segs = [dict(s) for s in segments]
     for rnd in range(rounds):
-        errs, r = clarity_review(segs, fmt, raw=True)
+        errs, r = clarity_review(segs, fmt, raw=True, hook=hook, context=context)
         if not errs:
             return segs, {'rounds': rnd, 'score': r['score']}
         by = {s['id']: s for s in segs}
-        if not r['hook_ok'] and r['better_hook'] and segs:
+        if hook and not r['hook_ok'] and r['better_hook'] and segs:
             segs[0]['text'] = r['better_hook'].strip()
         for i in r['issues']:
             if i['id'] in by and i['fix'].strip() and i['severity'] == 'high':
                 by[i['id']]['text'] = i['fix'].strip()
         log('polish applied fixes', round=rnd, fixed=len(r['issues']), score=r['score'])
-    errs, r = clarity_review(segs, fmt, raw=True)
+    errs, r = clarity_review(segs, fmt, raw=True, hook=hook, context=context)
     # A critic always finds something: accept a clear, well-hooked script and surface leftovers as warnings.
-    if r['score'] < 7 or not r['hook_ok']:
+    if r['score'] < min_score or (hook and not r['hook_ok']):
         raise RuntimeError(f'clarity review still failing after {rounds} polish rounds (score {r["score"]}, hook_ok {r["hook_ok"]}): {errs[:4]}')
     return segs, {'rounds': rounds, 'score': r['score'], 'notes': [f'{i["id"]}: {i["problem"]}'[:200] for i in r['issues'] if i['severity'] == 'high']}
 
@@ -224,35 +227,81 @@ def _expand(segments, facts):
             for s in segments]
 
 
+def _chapter_check(first, target):
+    def check(obj):
+        errs = []
+        segs = obj['segments']; n = sum(len(x['text'].split()) for x in segs)
+        if not 0.7 * target <= n <= 1.35 * target:
+            errs.append(f'this chapter has {n} words; aim for about {target} (between {int(0.7 * target)} and {int(1.35 * target)})')
+        if first and segs:
+            w = segs[0]['text']
+            if len(w.split()) > HOOK_WORDS['long']:
+                errs.append(f'the hook (first sentence) has {len(w.split())} words; at most {HOOK_WORDS["long"]}')
+            if w.lower().startswith(BAD_OPENERS):
+                errs.append(f'the hook starts with a weak opener ("{w.split()[0]}")')
+        for x in segs:
+            low = x['text'].lower()
+            for b in BANNED:
+                if b in low: errs.append(f'{x["id"]}: banned phrase "{b}"')
+            if len(re.findall(r'\d[\d,.]*', x['text'])) > 2: errs.append(f'{x["id"]}: too many numbers in one segment')
+        r = readability(' '.join(x['text'] for x in segs))
+        if r['flesch'] < 50 or r['avg'] > 15 or r['max'] > 22:
+            errs.append(f'too hard to follow (reading ease {r["flesch"]}, need 50+; average sentence {r["avg"]} words, need <=15; longest {r["max"]}, need <=22)')
+        return errs
+    return check
+
+
 def write_long(proj, P):
     o = outline(proj, P)
-    facts = {f['id']: f for f in o['facts']}; chapters = {c['id']: c['title'] for c in o['chapters']}
-    s = llm.complete_json('script_long', f"""Write the narration for this YouTube explainer from the story outline below
-(about 1,200 words total, 7-9 minutes spoken).
+    facts = {f['id']: f for f in o['facts']}; n_ch = len(o['chapters']); target = int(1220 / n_ch)
+    seg_schema = {'type': 'object', 'additionalProperties': False, 'required': ['segments'],
+                  'properties': {'segments': {'type': 'array', 'minItems': 3, 'maxItems': 30, 'items': SEGMENT}}}
+    all_segs, notes, scores, prev_tail = [], [], [], ''
+    for ci, ch in enumerate(o['chapters']):
+        first, last = ci == 0, ci == n_ch - 1
+        ch_facts = [facts[f] for f in ch['facts'] if f in facts]
+        for attempt in range(2):
+            d = llm.complete_json(f'chapter_{ci + 1}', f"""Write chapter {ci + 1} of {n_ch} of a YouTube explainer narration
+    (about {target} words). Video title: "{o['title']}". The big idea of the video: {o['big_idea']}
 
-{VOICE_GUIDE}
+    This chapter: "{ch['title']}"
+    Goal: {ch['goal']}
+    Beats to cover, in order: {ch['beats']}
+    Analogy to use (carry it through the chapter): {ch['analogy']}
+    {'Open the whole video with this hook idea: ' + o['hook'] if first else 'The previous chapter ended with: "' + prev_tail + '". Start with one sentence that connects naturally from there.'}
+    {HOOK_RULES.format(n=HOOK_WORDS['long']) if first else ''}
+    {'End the video with a short recap of the big idea and a one-line sign-off (a natural invitation to follow is fine).' if last else 'End with a sentence that makes the viewer curious about what comes next.'}
 
-{HOOK_RULES.format(n=14)}
+    {VOICE_GUIDE}
 
-Rules:
-- Follow the outline's chapters and beats. Open with the hook. Use each chapter's analogy.
-- State facts ONLY from the fact list; tag each segment with the ids of the facts it relies on ("facts": ["F3"]).
-  Explanations, analogies and transitions that add no new factual claim have "facts": [].
-- Never copy wording from quotes; say it in your own words.
-- A segment is 1-2 spoken sentences. Segment ids g01, g02, ... in order; chapter ids as in the outline.
-- The last segment is a one-line sign-off (a natural invitation to follow is fine, no begging).
+    Rules: state facts ONLY from this chapter's fact list and tag each segment with the fact ids it uses ("facts": [...]);
+    segments without new facts have "facts": []. Never copy wording from quotes. Each segment is one or two short
+    sentences; every sentence follows from the one before. Use chapter id "{ch['id']}" and segment ids g01, g02, ...
 
-Outline:
-{ {k: v for k, v in o.items() if k != 'facts'} }
-
-Facts:
-{[{'id': f['id'], 'fact': f['fact']} for f in o['facts']]}""",
-        SCRIPT_SCHEMA, check=_script_check('long', facts, chapters), timeout=900, repairs=2)
-    segs, pol = polish(s['segments'], 'long')
+    Facts for this chapter:
+    {[{'id': f['id'], 'fact': f['fact']} for f in ch_facts]}""", seg_schema, check=_chapter_check(first, target), timeout=600, repairs=2)
+            segs = [{**x, 'chapter': ch['id'], 'facts': [f for f in x['facts'] if f in facts]} for x in d['segments']]
+            try:
+                segs, pol = polish(segs, 'long', hook=first, min_score=7 if (first or attempt == 0) else 6,
+                                   context=f'This is chapter {ci + 1} of {n_ch} ("{ch["title"]}") of a longer video; judge it as part of that video.')
+                break
+            except RuntimeError as e:
+                log('chapter redraft', chapter=ch['id'], attempt=attempt, err=str(e)[:200])
+                if attempt == 1:
+                    raise
+        scores.append(pol['score']); notes += pol.get('notes', [])
+        all_segs += segs; prev_tail = ' '.join(x['text'] for x in segs[-2:])
+        log('chapter written', chapter=ch['id'], words=sum(len(x['text'].split()) for x in segs), clarity=pol['score'])
+    for i, x in enumerate(all_segs):                 # renumber across chapters
+        x['id'] = f'g{i + 1:02d}'
     script = {'title': o['title'], 'chapters': [{'id': c['id'], 'title': c['title']} for c in o['chapters']],
-              'facts': o['facts'], 'segments': _expand(segs, o['facts']), 'polish': pol}
+              'facts': o['facts'], 'segments': _expand(all_segs, o['facts']),
+              'polish': {'score': min(scores), 'notes': notes[:6]}}
+    n = word_count(script)
+    if not 950 <= n <= 1450:
+        raise RuntimeError(f'long script is {n} words (want about 1,200)')
     write_json(P / 'script' / 'v1.json', script)
-    return {'words': word_count(script), 'segments': len(script['segments']), 'facts': len(o['facts']),
+    return {'words': n, 'segments': len(all_segs), 'facts': len(o['facts']), 'clarity_min': min(scores),
             **readability(' '.join(x['text'] for x in script['segments']))}
 
 

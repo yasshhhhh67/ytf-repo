@@ -70,9 +70,12 @@ def make_check(segs, fmt, final_scene_required):
                 errs.append(f'a Short needs at least {need} scenes (a new picture every 3-5 seconds); you gave {len(obj["scenes"])}')
             if any(len(sc['segments']) > 2 for sc in obj['scenes']):
                 errs.append('in a Short each scene may cover at most 2 segments')
-        with_g = sum(1 for sc in obj['scenes'] if 'graphic' in json.dumps(sc['params']) or sc['template'] in ('crowd', 'graphic_flow'))
-        if fmt == 'short' and with_g < len(obj['scenes']) / 2:
-            errs.append(f'only {with_g} of {len(obj["scenes"])} scenes show an illustration; at least half must')
+        with_g = sum(1 for sc in obj['scenes'] if '"graphic"' in json.dumps(sc['params']) or sc['template'] in ('crowd', 'graphic_flow'))
+        plain = len(obj['scenes']) - with_g
+        if fmt == 'short' and plain > 2:
+            errs.append(f'{plain} scenes have no illustration; a Short may have at most 2 (use hero_graphic, versus_graphics, crowd, graphic_steps, graphic_flow, or add a "graphic")')
+        if fmt == 'long' and len(obj['scenes']) >= 4 and with_g < 0.4 * len(obj['scenes']):
+            errs.append(f'only {with_g} of {len(obj["scenes"])} scenes show an illustration; at least 40% must')
         cnt = Counter(sc['template'] for sc in obj['scenes'])
         if fmt == 'long' and len(obj['scenes']) >= 8:
             for t, n in cnt.items():
@@ -104,8 +107,9 @@ def run(proj, P):
 {chapter_rule}
 Pacing: {pace}. Pick the template that best EXPLAINS each idea visually (diagrams, flows, comparisons, numbers),
 not decoration. Make the video's central analogy visible on screen with ILLUSTRATIONS (hero_graphic, versus_graphics,
-crowd, graphic_steps, graphic_flow, or a "graphic" on kinetic_text/title_card/big_number/end_card): at least half of the
-scenes must show an illustration. Use diagrams/charts where the exact structure or numbers matter. On-screen words must be as simple as the narration
+crowd, graphic_steps, graphic_flow, or a "graphic" on kinetic_text/title_card/big_number/end_card). Shorts: at most 2
+scenes without an illustration. Long videos: at least 40% of scenes with an illustration. Use plain diagrams/charts
+only where the exact structure or numbers matter. On-screen words must be as simple as the narration
 (no jargon the narration didn't explain). Prefer topic-specific visuals: matrix_multiply for matrix math, parallel_grid for parallel vs sequential
 work, labeled_diagram for how components connect. On-screen text must be short, accurate and match what is said;
 never put a number on screen that isn't in the narration or its evidence. Use "cue" words (copied from the narration)
