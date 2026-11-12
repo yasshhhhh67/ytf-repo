@@ -1,0 +1,23 @@
+[Unit]
+Description=YTF Telegram bot (approvals and commands)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ytf
+Group=ytf
+WorkingDirectory=/srv/ytf/app
+Environment=HOME=/srv/ytf PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 PLAYWRIGHT_BROWSERS_PATH=/srv/ytf/data/models/ms-playwright
+LoadCredentialEncrypted=ytf.gemini-key:/etc/credstore.encrypted/ytf.gemini-key
+LoadCredentialEncrypted=ytf.telegram-token:/etc/credstore.encrypted/ytf.telegram-token
+LoadCredentialEncrypted=ytf.youtube-client:/etc/credstore.encrypted/ytf.youtube-client
+LoadCredentialEncrypted=ytf.youtube-token:/etc/credstore.encrypted/ytf.youtube-token
+ExecStart=/srv/ytf/venv/bin/python -m ytf.cli bot
+Restart=always
+RestartSec=30
+Nice=0
+OOMScoreAdjust=-100
+MemoryMax=150M
+
+[Install]
+WantedBy=multi-user.target

@@ -11,7 +11,8 @@ from .common import PROJECTS, log, read_json, slug, telegram, write_json
 
 STAGES = [
     ('research', lambda pr, P: research.run(pr, P) if not pr.get('parent') else {'reused_from': pr['parent']}),
-    ('script', lambda pr, P: script.write_long(pr, P) if pr['format'] == 'long' else script.write_short(pr, P, PROJECTS / pr['parent'])),
+    ('script', lambda pr, P: script.write_long(pr, P) if pr['format'] == 'long'
+               else script.write_short(pr, P, PROJECTS / pr['parent'] if pr.get('parent') else None)),
     ('verify', script.verify),
     ('storyboard', storyboard.run),
     ('voice', voice.synth),
@@ -69,6 +70,7 @@ def main():
     a = sub.add_parser('derive-short'); a.add_argument('parent'); a.add_argument('--angle', required=True)
     a = sub.add_parser('run'); a.add_argument('project'); a.add_argument('--until', choices=NAMES); a.add_argument('--redo', choices=NAMES)
     a = sub.add_parser('status'); a.add_argument('project')
+    sub.add_parser('worker'); sub.add_parser('bot'); sub.add_parser('schedule')
     x = ap.parse_args()
     if x.cmd == 'new':
         _new(x.format, x.topic)
@@ -79,6 +81,12 @@ def main():
         _new('short', x.angle, parent=x.parent)
     elif x.cmd == 'run':
         _run(x.project, x.until, x.redo)
+    elif x.cmd == 'worker':
+        from . import auto; auto.worker()
+    elif x.cmd == 'bot':
+        from . import bot; bot.main()
+    elif x.cmd == 'schedule':
+        from . import auto; print(auto.status_text())
     elif x.cmd == 'status':
         st = read_json(PROJECTS / x.project / 'state.json')
         for n in NAMES:

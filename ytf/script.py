@@ -321,13 +321,41 @@ sentence 3 and every later sentence stays inside it; each sentence follows from 
 why", "So"); no sentence introduces a new character or idea out of nowhere; the last line echoes the first."""
 
 
-def write_short(proj, P, parent_P):
-    sources = read_json(parent_P / 'research' / 'sources.json'); write_json(P / 'research' / 'sources.json', sources)
-    parent = read_json(parent_P / 'script' / 'final.json') or read_json(parent_P / 'script' / 'v1.json')
-    facts = {f['id']: f for f in parent['facts']}
+FACTS_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['facts'],
+                'properties': {'facts': {'type': 'array', 'minItems': 4, 'maxItems': 10, 'items': FACT}}}
+
+
+def short_facts(proj, P):
+    """Standalone Shorts: pick 5-8 simple, essential facts (exact quotes checked against the sources)."""
+    sources = read_json(P / 'research' / 'sources.json'); plan = read_json(P / 'research' / 'plan.json')
+    by = {x['id']: x['text'] for x in sources}
+    def check(o):
+        return [f'{f["id"]}: quote is not an exact copy of text in {f["source"]}' for f in o['facts']
+                if f['source'] not in by or not _quote_ok(f['quote'], by[f['source']])]
+    o = llm.complete_json('short_facts', f"""Pick the 5-8 facts a 45-second YouTube Short needs to explain this simply.
+Topic: {proj['topic']}
+Angle: {plan['angle']}
+Choose facts a curious 12-year-old can understand without jargon; skip trivia (names, dates, model numbers).
+Each fact: id F1..., plain-language "fact", source id, and a quote copied EXACTLY (15-400 chars) from that source.
+
+Sources:
+{research.pack(P, budget=24000)}""", FACTS_SCHEMA, check=check, timeout=600)
+    write_json(P / 'script' / 'facts.json', o)
+    return o['facts']
+
+
+def write_short(proj, P, parent_P=None):
+    if parent_P:
+        sources = read_json(parent_P / 'research' / 'sources.json'); write_json(P / 'research' / 'sources.json', sources)
+        parent = read_json(parent_P / 'script' / 'final.json') or read_json(parent_P / 'script' / 'v1.json')
+        fact_list, origin = parent['facts'], f'derived from the long video "{parent["title"]}"'
+    else:
+        fact_list, origin = short_facts(proj, P), 'made from fresh research'
+    parent = {'facts': fact_list}
+    facts = {f['id']: f for f in fact_list}
     s = llm.complete_json('script_short', f"""Write a YouTube Short (40-50 seconds, 95-115 words) for "Future Mechanism".
 Angle: {proj['topic']}
-It is a standalone vertical video (not a trailer) derived from the long video "{parent['title']}".
+It is a standalone vertical video (not a trailer), {origin}.
 
 {HOOK_RULES.format(n=9)}
 

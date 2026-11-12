@@ -63,6 +63,8 @@ def run_stage(proj, P):
         state['captions'] = True
     write_json(P / 'publish' / 'upload.json', state)
     qa = read_json(P / 'qa' / 'report.json')
+    if proj.get('auto'):                     # the scheduler sends an approval card with buttons instead
+        return {'video_id': vid, 'processing': state['processing']}
     telegram(f'🎬 Ready for review ({proj["format"]}): {meta["title"]}\n'
              f'https://youtu.be/{vid} (private)\n'
              f'Length {qa["info"]["duration"]:.0f}s · {qa["info"]["claims"]} sourced claims · {qa["info"]["lufs"]} LUFS\n'
