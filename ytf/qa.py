@@ -3,7 +3,7 @@ import json, re, subprocess
 
 from .common import read_json, write_json
 
-LIMITS = {'short': (20.0, 59.5), 'long': (420.0, 630.0)}
+LIMITS = {'short': (20.0, 59.5), 'long': (360.0, 660.0)}     # hard limits; long target 7-10 min is a soft check
 
 
 def _ff(args):
@@ -23,6 +23,7 @@ def run_stage(proj, P):
     if not a or a['codec_name'] != 'aac' or a['sample_rate'] != '48000': hard.append('audio must be AAC 48 kHz')
     lo, hi = LIMITS[fmt]
     if not lo <= dur <= hi: hard.append(f'duration {dur:.1f}s outside {lo}-{hi}s')
+    if fmt == 'long' and lo <= dur < 420: soft.append(f'length {int(dur // 60)}:{int(dur % 60):02d} is under the 7-minute target')
     # black frames
     blacks = re.findall(r'black_start:([\d.]+) black_end:([\d.]+) black_duration:([\d.]+)', _ff(['-i', str(m), '-vf', 'blackdetect=d=0.3:pix_th=0.06', '-an', '-f', 'null', '-']))
     if blacks: hard.append(f'black segments: {blacks[:3]}')

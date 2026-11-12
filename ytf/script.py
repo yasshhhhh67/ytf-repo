@@ -253,7 +253,7 @@ def _chapter_check(first, target):
 
 def write_long(proj, P):
     o = outline(proj, P)
-    facts = {f['id']: f for f in o['facts']}; n_ch = len(o['chapters']); target = int(1220 / n_ch)
+    facts = {f['id']: f for f in o['facts']}; n_ch = len(o['chapters']); target = int(1380 / n_ch)   # fact checks trim ~15%
     seg_schema = {'type': 'object', 'additionalProperties': False, 'required': ['segments'],
                   'properties': {'segments': {'type': 'array', 'minItems': 3, 'maxItems': 30, 'items': SEGMENT}}}
     all_segs, notes, scores, prev_tail = [], [], [], ''
@@ -298,8 +298,8 @@ def write_long(proj, P):
               'facts': o['facts'], 'segments': _expand(all_segs, o['facts']),
               'polish': {'score': min(scores), 'notes': notes[:6]}}
     n = word_count(script)
-    if not 950 <= n <= 1450:
-        raise RuntimeError(f'long script is {n} words (want about 1,200)')
+    if not 1050 <= n <= 1600:
+        raise RuntimeError(f'long script is {n} words (want about 1,350)')
     write_json(P / 'script' / 'v1.json', script)
     return {'words': n, 'segments': len(all_segs), 'facts': len(o['facts']), 'clarity_min': min(scores),
             **readability(' '.join(x['text'] for x in script['segments']))}

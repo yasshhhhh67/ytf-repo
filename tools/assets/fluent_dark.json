@@ -1,0 +1,14 @@
+{
+ "threshold": 0.3,
+ "dark": {
+  "bust-in-silhouette": 0.082,
+  "busts-in-silhouette": 0.098,
+  "chess-pawn": 0.214,
+  "ant": 0.226,
+  "hundred-points": 0.273,
+  "electric-plug": 0.282,
+  "cloud-with-lightning": 0.285,
+  "movie-camera": 0.294,
+  "people-hugging": 0.297
+ }
+}

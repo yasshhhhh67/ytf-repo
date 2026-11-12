@@ -70,6 +70,8 @@ def make_check(segs, fmt, final_scene_required):
                 errs.append(f'a Short needs at least {need} scenes (a new picture every 3-5 seconds); you gave {len(obj["scenes"])}')
             if any(len(sc['segments']) > 2 for sc in obj['scenes']):
                 errs.append('in a Short each scene may cover at most 2 segments')
+        if fmt == 'long' and any(len(sc['segments']) > 2 for sc in obj['scenes']):
+            errs.append('in a long video each scene may cover at most 2 segments (a new picture every few sentences)')
         with_g = sum(1 for sc in obj['scenes'] if '"graphic"' in json.dumps(sc['params']) or sc['template'] in ('crowd', 'graphic_flow'))
         plain = len(obj['scenes']) - with_g
         if fmt == 'short' and plain > 2:
@@ -99,7 +101,7 @@ def run(proj, P):
         last = gi == len(groups) - 1
         aspect = 'vertical 9:16 phone Short' if fmt == 'short' else 'horizontal 16:9 video'
         pace = ('a new picture every 3-5 seconds, at least 8 scenes; one scene per segment, and you may split a segment with two visual ideas across 2 consecutive scenes (list its id in both)' if fmt == 'short'
-                else 'one scene per 1-3 segments (about 6-12 seconds each)')
+                else 'one scene per 1-2 segments (a new picture every 5-10 seconds)')
         chapter_rule = ('' if fmt == 'short' else
                         f'This is chapter "{chapters[segs[0]["chapter"]]}". ' +
                         ('Start with title_card for the video title (kicker "Explained").' if gi == 0 else 'Start with a title_card naming this chapter (kicker "Part ' + str(gi) + '").'))

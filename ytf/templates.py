@@ -10,7 +10,9 @@ GRAPHIC = {'type': 'string', 'pattern': '^[a-z0-9-]{2,40}$', 'description': 'a k
 MOTION = {'enum': ['none', 'float', 'pulse', 'wiggle', 'spin', 'bob', 'headShake']}
 # Graphics preset: Microsoft Fluent Emoji (MIT). Keys = slug of the curated names in tools/assets/fluent_catalog.json.
 _CAT = Path(__file__).resolve().parent.parent / 'tools' / 'assets' / 'fluent_catalog.json'
-GRAPHICS = sorted({re.sub(r'[^a-z0-9]+', '-', n.lower()).strip('-') for n in json.loads(_CAT.read_text())})
+_DARK = json.loads((_CAT.parent / 'fluent_dark.json').read_text())['dark']     # measured by engine/tools/measure_fluent.mjs
+TOO_DARK = {k for k, luma in _DARK.items() if luma < 0.22}                       # invisible on the navy background
+GRAPHICS = sorted({re.sub(r'[^a-z0-9]+', '-', n.lower()).strip('-') for n in json.loads(_CAT.read_text())} - TOO_DARK)
 
 
 def obj(props, required, **kw):

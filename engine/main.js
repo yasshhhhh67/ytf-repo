@@ -18,8 +18,13 @@
     const TL = await (await fetch('/job/timeline.json')).json();
     Y.init(TL.width, TL.height);
     // Shorts: templates draw in a smaller virtual box that is scaled up ~1.34x, so everything reads well on a phone.
-    const VS = Y.vertical ? 940 / 700 : 1;
-    if (Y.vertical) Y.box = { x: 0, y: 0, w: 700, h: 760 };
+    // Both formats draw in a smaller virtual box that is scaled up, so text and illustrations read well on phones:
+    // Shorts ~1.34x (box 940x1020 at 70,230), long-form 1.25x (box 1700x900 at 110,90).
+    const VS = Y.vertical ? 940 / 700 : 1700 / 1360;
+    const OFF = Y.vertical ? [70, 230] : [110, 90];
+    Y.box = Y.vertical ? { x: 0, y: 0, w: 700, h: 760 } : { x: 0, y: 0, w: 1360, h: 720 };
+    // Slow camera push-in on scenes longer than 7 s, so long explanations never sit completely still.
+    const PUSH_MIN = 7, PUSH = 0.045;
     const scenes = TL.scenes, caps = TL.captions || [];
     await Y.loadGraphics(Y.graphicKeys(scenes.map((s) => s.params)));
     const bootReports = Y.reports.slice();
@@ -34,7 +39,9 @@
     const sceneAt = (t) => { let i = scenes.findIndex((s) => t >= s.start && t < s.end); if (i < 0) i = t < scenes[0].start ? 0 : scenes.length - 1; return i; };
     const drawScene = (ctx, s, lt) => {
       ctx.clearRect(0, 0, TL.width, TL.height); Y.c = ctx; ctx.save();
-      if (Y.vertical) { ctx.translate(70, 230); ctx.scale(VS, VS); }
+      const d = s.end - s.start, z = d > PUSH_MIN ? 1 + PUSH * Y.eio(Y.clamp(lt / d)) : 1;
+      ctx.translate(OFF[0], OFF[1]); ctx.scale(VS, VS);
+      if (z !== 1) { const cxv = Y.box.w / 2, cyv = Y.box.h / 2; ctx.translate(cxv, cyv); ctx.scale(z, z); ctx.translate(-cxv, -cyv); }
       try { Y.TEMPLATES[s.template].draw(s.params, lt, s.end - s.start, s); }
       catch (e) { Y.reports.push({ kind: 'error', scene: s.id, msg: String(e && e.message || e) }); }
       ctx.restore(); Y.c = main;
@@ -70,7 +77,7 @@
     OP.frameKey = (t) => {
       const i = sceneAt(t), s = scenes[i], lt = localT(i, t); const tm = Y.TEMPLATES[s.template];
       const st = tm.settle ? tm.settle(s.params, s.end - s.start, s) : null;
-      if (st == null || lt < Math.max(st, TR + 0.05)) return null;
+      if (st == null || lt < Math.max(st, TR + 0.05) || s.end - s.start > PUSH_MIN) return null;
       if (TL.format !== 'short' || s.template === 'kinetic_text') return 's' + i;
       const gi = capAt(t); if (gi >= 0 && t < caps[gi].s + 0.13) return null;
       return 's' + i + ':c' + gi;
