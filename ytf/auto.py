@@ -5,6 +5,7 @@ then sends an approval card to Telegram. Nothing becomes public without approval
 Approve / Reject buttons and schedules approved videos with YouTube's publishAt for their slot.
 State lives in data/schedule.json, guarded by a file lock because the worker and the bot both update it."""
 import fcntl, json, os, subprocess, sys, time
+from pathlib import Path
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -158,6 +159,10 @@ def worker_step():
         s['status'] = 'ready' if ok else 'failed'
         if ok:
             s['video_id'] = read_json(PROJECTS / pid / 'publish' / 'upload.json')['video_id']
+    try:
+        cleanup()
+    except Exception as e:  # noqa: BLE001
+        log('cleanup error', err=str(e)[:200])
     if ok:
         approval_card(fmt, pid, k)
     else:
@@ -167,9 +172,11 @@ def worker_step():
 
 
 def worker():
-    log('worker started')
+    log('worker started'); last_clean = 0
     while True:
         try:
+            if time.time() - last_clean > 86400:
+                cleanup(); last_clean = time.time()
             worker_step()
         except Exception as e:  # noqa: BLE001 - keep the loop alive; report and continue
             log('worker error', err=str(e)[:500])
@@ -227,3 +234,44 @@ def status_text():
         return ('⏸ PAUSED\n' if st['paused'] else '') + '\n'.join(rows or ['no slots yet']) + \
             f'\nqueue: {len(st["topics"]["short"])} short / {len(st["topics"]["long"])} long topics' + \
             f'\napproved in a row: {st["stats"].get("approved_in_a_row", 0)}'
+
+
+# ---------------- housekeeping (keep the 1 GB VM and its disk lean) ----------------
+def cleanup(verbose=False):
+    """Delete what is no longer needed. Uploaded projects: intermediate audio/render files go at once; the master
+    video 7 days after its slot (YouTube keeps the published copy). Failed/rejected projects: media after 3 days.
+    Scripts, storyboards, QA reports and thumbnails (small) are always kept. Old temp files go after a day."""
+    import shutil
+    now = time.time(); freed = 0
+    def rm(p):
+        nonlocal freed
+        if p.is_dir():
+            freed += sum(f.stat().st_size for f in p.rglob('*') if f.is_file()); shutil.rmtree(p, ignore_errors=True)
+        elif p.exists():
+            freed += p.stat().st_size; p.unlink()
+    slots = (read_json(STATE, None) or {}).get('slots', {})
+    slot_of = {s.get('project'): (k, s) for k, s in slots.items()}
+    for P in PROJECTS.iterdir() if PROJECTS.exists() else []:
+        st = read_json(P / 'state.json', {}) or {}
+        age_days = (now - P.stat().st_mtime) / 86400
+        uploaded = 'upload' in st.get('done', {})
+        if uploaded:
+            for x in [P / 'render' / 'chunks', P / 'audio' / 'seg', P / 'audio' / 'mix.wav', P / 'audio' / 'bed.wav',
+                      P / 'audio' / 'mix_raw.wav', P / 'render' / 'video.mp4']:
+                rm(x)
+            k, s = slot_of.get(P.name, (None, None))
+            when = ist(k).timestamp() if k else (P / 'render' / 'master.mp4').stat().st_mtime if (P / 'render' / 'master.mp4').exists() else now
+            if now - when > 7 * 86400:
+                rm(P / 'render' / 'master.mp4'); rm(P / 'audio' / 'narration.wav')
+        elif st.get('failed') and age_days > 3:
+            for x in [P / 'render', P / 'audio']:
+                rm(x)
+    for d in [DATA.parent / 'tmp', Path('/tmp')]:
+        for f in d.glob('*') if d.exists() else []:
+            if f.name.startswith(('ytf', 'fs-', 'playwright', 'gl', 'gs', 'st', 'lt', 'dl', 'fr')) and now - f.stat().st_mtime > 86400:
+                try:
+                    if f.owner() == 'ytf': rm(f)
+                except (KeyError, OSError):
+                    pass
+    log('cleanup', freed_mb=round(freed / 1048576, 1))
+    return round(freed / 1048576, 1)

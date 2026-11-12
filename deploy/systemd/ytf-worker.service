@@ -17,6 +17,11 @@ Restart=always
 RestartSec=30
 Nice=5
 OOMScoreAdjust=300
+# The ledger website comes first: video work gets low CPU/disk priority and a soft memory cap
+# (above it the kernel reclaims/swaps this service's memory instead of anyone else's).
+CPUWeight=20
+IOWeight=20
+MemoryHigh=650M
 
 [Install]
 WantedBy=multi-user.target

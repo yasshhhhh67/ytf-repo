@@ -70,7 +70,7 @@ def main():
     a = sub.add_parser('derive-short'); a.add_argument('parent'); a.add_argument('--angle', required=True)
     a = sub.add_parser('run'); a.add_argument('project'); a.add_argument('--until', choices=NAMES); a.add_argument('--redo', choices=NAMES)
     a = sub.add_parser('status'); a.add_argument('project')
-    sub.add_parser('worker'); sub.add_parser('bot'); sub.add_parser('schedule')
+    sub.add_parser('worker'); sub.add_parser('bot'); sub.add_parser('schedule'); sub.add_parser('cleanup')
     x = ap.parse_args()
     if x.cmd == 'new':
         _new(x.format, x.topic)
@@ -85,6 +85,8 @@ def main():
         from . import auto; auto.worker()
     elif x.cmd == 'bot':
         from . import bot; bot.main()
+    elif x.cmd == 'cleanup':
+        from . import auto; print(f'freed {auto.cleanup()} MB')
     elif x.cmd == 'schedule':
         from . import auto; print(auto.status_text())
     elif x.cmd == 'status':
