@@ -149,7 +149,8 @@ def clarity_review(segments, fmt, raw=False, hook=True, context=''):
 - hook_ok: after hearing only the first sentence, would you keep watching? (true only if it creates real curiosity)
 - better_hook: if hook_ok is false, a stronger first sentence of at most 9 words that is still true; else ""
 - each fix must be ONE complete replacement sentence (not advice), simple, true, that still connects smoothly to
-  the sentences before and after it and keeps the same analogy
+  the sentences before and after it and keeps the same analogy, and is NO LONGER than the sentence it replaces
+  (the narration has a strict length limit)
 - issues: every sentence that is confusing, uses an unexplained technical word, is vague or abstract, skips a step,
   or could mislead (an oversimplification that becomes false). severity "high" if it would lose or mislead the viewer.
   Give a concrete simpler rewrite as the fix.
@@ -175,12 +176,21 @@ def polish(segments, fmt, rounds=2, hook=True, context='', min_score=7):
         if not errs:
             return segs, {'rounds': rnd, 'score': r['score']}
         by = {s['id']: s for s in segs}
+        # Fixes must not blow the length budget: the reviewer's rewrites tend to be longer, and a Short that grows past
+        # the word limit fails verification later. A fix that adds words is applied only while the total stays in budget.
+        hi = WORDS[fmt][1]; total = lambda: sum(len(x['text'].split()) for x in segs); skipped = 0
+        def apply(seg, new):
+            nonlocal skipped
+            grow = len(new.split()) - len(seg['text'].split())
+            if grow > 0 and total() + grow > hi:
+                skipped += 1; return
+            seg['text'] = new
         if hook and not r['hook_ok'] and r['better_hook'] and segs:
-            segs[0]['text'] = r['better_hook'].strip()
+            apply(segs[0], r['better_hook'].strip())
         for i in r['issues']:
             if i['id'] in by and i['fix'].strip() and i['severity'] == 'high':
-                by[i['id']]['text'] = i['fix'].strip()
-        log('polish applied fixes', round=rnd, fixed=len(r['issues']), score=r['score'])
+                apply(by[i['id']], i['fix'].strip())
+        log('polish applied fixes', round=rnd, fixed=len(r['issues']), skipped_too_long=skipped, words=total(), score=r['score'])
     errs, r = clarity_review(segs, fmt, raw=True, hook=hook, context=context)
     # A critic always finds something: accept a clear, well-hooked script and surface leftovers as warnings.
     if r['score'] < min_score or (hook and not r['hook_ok']):
