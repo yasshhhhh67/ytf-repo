@@ -1,0 +1,40 @@
+{
+ "format": "short", "style": "cartoon", "width": 1080, "height": 1920, "fps": 30, "duration": 32.0,
+ "worlds": [
+  {"setting": "road", "props": [
+   {"id": "a", "kind": "tower", "x": 0, "label": "Tower A"},
+   {"id": "b", "kind": "tower", "x": 900, "label": "Tower B"},
+   {"id": "car", "kind": "car", "x": 180},
+   {"id": "ph", "kind": "phone", "x": 180, "on": "car"},
+   {"id": "tun", "kind": "tunnel", "x": 1900, "hidden": true}
+  ]}
+ ],
+ "scenes": [
+  {"id": "s01", "template": "world_shot", "world": 0, "start": 0.0, "end": 4.5, "params": {
+    "title": "Your call jumps towers", "highlight": "towers", "focus": ["a", "car", "b"],
+    "actions": [{"do": "activate", "target": "a"}, {"do": "link", "target": "a", "to": "ph"}]}},
+  {"id": "s02", "template": "world_shot", "world": 0, "start": 4.5, "end": 10.0, "params": {
+    "chapter": {"n": 1, "title": "The relay", "sub": "Towers pass your call along"},
+    "callout": {"text": "Your call = the baton", "tone": "yellow"}, "focus": ["a", "car"],
+    "actions": [{"do": "range", "target": "a", "r": 420}, {"do": "badge", "target": "a", "icon": "bars4"}, {"do": "move", "target": "car", "to": 560}]}},
+  {"id": "s03", "template": "world_shot", "world": 0, "start": 10.0, "end": 16.0, "params": {
+    "callout": {"text": "Your tower calls ahead", "tone": "dark"}, "focus": ["a", "car", "b"],
+    "actions": [{"do": "badge", "target": "a", "icon": "bars1"}, {"do": "range", "target": "b", "r": 420}, {"do": "badge", "target": "b", "icon": "bars4"},
+                {"do": "link", "target": "b", "to": "ph"}, {"do": "unlink", "target": "a"}, {"do": "highlight", "target": "b"}]}},
+  {"id": "s04", "template": "big_number", "start": 16.0, "end": 20.0, "params": {
+    "value": 0.05, "decimals": 2, "suffix": " s", "label": "A few hundredths of a second", "graphic": "stopwatch"}},
+  {"id": "s05", "template": "world_shot", "world": 0, "start": 20.0, "end": 27.0, "params": {
+    "chapter": {"n": 2, "title": "Dead zones", "sub": "Why tunnels drop calls"},
+    "callout": {"text": "No next runner", "tone": "red"}, "focus": ["b", "tun"],
+    "actions": [{"do": "show", "target": "tun"}, {"do": "deactivate", "target": "a"}, {"do": "move", "target": "car", "to": 1900},
+                {"do": "link", "target": "b", "to": "ph", "style": "weak"}, {"do": "badge", "target": "b", "icon": "question"}]}},
+  {"id": "s06", "template": "end_card", "start": 27.0, "end": 32.0, "params": {"line": "Your phone never had to choose.", "graphic": "mobile-phone"}}
+ ],
+ "captions": [
+  {"s": 0.1, "e": 1.6, "text": "your call", "hi": "call"}, {"s": 1.6, "e": 3.2, "text": "jumps towers", "hi": "towers"},
+  {"s": 5.0, "e": 7.0, "text": "like a relay", "hi": "relay"}, {"s": 7.0, "e": 9.6, "text": "passing a baton", "hi": "baton"},
+  {"s": 10.4, "e": 12.6, "text": "the signal fades", "hi": "fades"}, {"s": 12.6, "e": 15.6, "text": "the next tower takes over", "hi": "takes"},
+  {"s": 20.4, "e": 23.0, "text": "inside a tunnel", "hi": "tunnel"}, {"s": 23.0, "e": 26.6, "text": "there's no next runner", "hi": "runner"}
+ ],
+ "chapters": []
+}

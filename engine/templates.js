@@ -92,7 +92,7 @@ T.labeled_diagram = {
       const ox = Y.vertical ? 0 : nw / 2 + 8, oy = Y.vertical ? nh / 2 + 8 : 0;
       const sx = a.x + ux * Math.abs(ux * ox + uy * oy) , sy = a.y + uy * Math.abs(ux * ox + uy * oy);
       const ex = z.x - ux * Math.abs(ux * ox + uy * oy), ey = z.y - uy * Math.abs(ux * ox + uy * oy);
-      Y.arrow(sx, sy, ex, ey, 'rgba(160,180,255,0.75)', 5, k, 20);
+      Y.arrow(sx, sy, ex, ey, B.softLine, 5, k, 20);
       if (e.label && k > 0.95) { c.save(); c.globalAlpha = Y.seg(lt, t0 + 0.5, t0 + 0.8); Y.label(e.label, (sx + ex) / 2 + (Y.vertical ? 16 : 0), (sy + ey) / 2 - (Y.vertical ? 0 : 14), B.accent2, 22, Y.vertical ? 'left' : 'center'); c.restore(); }
     });
     p.nodes.forEach((n, i) => {
@@ -128,7 +128,7 @@ T.process_flow = {
       const q = pts[i], k = Y.eo(Y.seg(lt, at(i), at(i) + 0.45)); if (k <= 0) return;
       const active = i === done - 1;
       c.save(); c.globalAlpha = k; c.translate(Y.vertical ? (1 - k) * 60 : 0, Y.vertical ? 0 : (1 - k) * 60);
-      Y.card(q.x, q.y, cw, ch, { fill: active ? 'rgba(61,107,255,0.22)' : B.card, line: active ? B.accent : B.cardLine });
+      Y.card(q.x, q.y, cw, ch, { fill: active ? B.soft : B.card, line: active ? B.accent : B.cardLine });
       const r = 36; const nx = Y.vertical ? q.x + 70 : q.x + 60, ny = Y.vertical ? q.y + ch / 2 : q.y + 60;
       c.fillStyle = active ? B.accent : 'rgba(255,255,255,0.12)'; c.beginPath(); c.arc(nx, ny, r, 0, 6.283); c.fill();
       c.font = Y.font(34, 900); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(i + 1), nx, ny + 2);
@@ -223,7 +223,7 @@ T.bar_chart = {
       c.save(); c.globalAlpha = Y.seg(lt, t0 - 0.1, t0 + 0.2);
       Y.text([bar.label], b.x + labW - 20, y + (rowH - ls) / 2 - 6, ls, B.ink, 'right', 700);
       const fw = (b.w - labW - valW) * (bar.value / max) * k;
-      Y.rr(b.x + labW, y + (rowH - bh) / 2, Math.max(fw, bh * 0.2), bh, bh / 2); c.fillStyle = bar.highlight ? B.accent : 'rgba(150,170,230,0.45)'; c.fill();
+      Y.rr(b.x + labW, y + (rowH - bh) / 2, Math.max(fw, bh * 0.2), bh, bh / 2); c.fillStyle = bar.highlight ? B.accent : B.dim; c.fill();
       const v = Y.fmtNum(bar.value * k, Number.isInteger(bar.value) ? 0 : 1) + (p.unit ? ' ' + p.unit : '');
       c.font = Y.font(38, 800); c.fillStyle = bar.highlight ? '#fff' : B.muted; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(v, b.x + labW + Math.max(fw, bh * 0.2) + 18, y + rowH / 2);
       c.restore();
@@ -359,7 +359,7 @@ T.hero_graphic = {
       let px, py;
       if (Y.vertical) { const pos = [[-0.5, -0.42], [0.5, 0.02], [-0.5, 0.46]][i]; px = gx + pos[0] * size; py = gy + pos[1] * size; }
       else { px = b.x + b.w * 0.74; py = area.y + area.h * (n === 1 ? 0.5 : 0.22 + (i * 0.56) / (n - 1)); }
-      c.save(); c.globalAlpha = k; c.strokeStyle = 'rgba(160,180,255,0.55)'; c.lineWidth = 3; c.setLineDash([8, 8]);
+      c.save(); c.globalAlpha = k; c.strokeStyle = B.softLine; c.lineWidth = 3; c.setLineDash([8, 8]);
       c.beginPath(); c.moveTo(gx + (px > gx ? 1 : -1) * size * 0.32, gy + (py - gy) * 0.4); c.lineTo(px, py); c.stroke(); c.setLineDash([]); c.restore();
       fitPill(txt, px, py, Y.vertical ? 330 : 560, k);
     });
@@ -381,7 +381,7 @@ T.versus_graphics = {
       const win = p.winner === (i ? 'right' : 'left'), lose = p.winner && p.winner !== 'none' && !win;
       const done = Y.seg(lt, t0 + 1.2, t0 + 1.6);
       c.save(); c.globalAlpha = Y.clamp(k * 2) * (lose ? Y.lerp(1, 0.55, done) : 1);
-      Y.card(r.x, r.y, r.w, r.h, { fill: win && done ? 'rgba(61,107,255,0.16)' : B.card, line: win && done ? B.accent : B.cardLine });
+      Y.card(r.x, r.y, r.w, r.h, { fill: win && done ? B.soft : B.card, line: win && done ? B.accent : B.cardLine });
       const gs = Y.vertical ? Math.min(r.h * 0.78, 260) : Math.min(r.w * 0.55, r.h * 0.5);
       const gx = Y.vertical ? r.x + 40 + gs / 2 : r.x + r.w / 2, gy = Y.vertical ? r.y + r.h / 2 : r.y + r.h * 0.38;
       Y.graphic(sd.graphic, gx, gy, gs, { enterPreset: i ? 'slideInRight' : 'slideInLeft', k, idlePreset: sd.motion || 'float', t: lt, seed: i });
@@ -396,7 +396,7 @@ T.versus_graphics = {
     const vk = Y.eob(Y.seg(lt, 0.5, 0.9));
     if (vk > 0) { const vx = Y.vertical ? cx() : b.x + b.w / 2, vy = Y.vertical ? area.y + area.h / 2 : area.y + area.h * 0.38;
       c.save(); c.translate(vx, vy); c.scale(vk, vk); c.fillStyle = B.warn; c.beginPath(); c.arc(0, 0, 46, 0, 6.283); c.fill();
-      c.font = Y.font(40, 900); c.fillStyle = '#0b1020'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('VS', 0, 3); c.restore(); }
+      c.font = Y.font(40, 900); c.fillStyle = B.onWarn; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('VS', 0, 3); c.restore(); }
   },
   settle: (p) => ((p.left.motion && p.left.motion !== 'none') || (p.right.motion && p.right.motion !== 'none') ? null : 2.4),
 };
@@ -461,7 +461,7 @@ T.graphic_flow = {
       : { x: b.x + (b.w * (i + 0.5)) / n, y: top + (b.y + b.h - top) * 0.42 });
     const gs = Y.vertical ? Math.min((b.y + b.h - top) / n * 0.62, 190) : Math.min(b.w / n * 0.5, 260);
     const lk = Y.eio(Y.seg(lt, 0.3, 0.3 + 0.3 * n));
-    c.save(); c.strokeStyle = 'rgba(120,150,255,0.45)'; c.lineWidth = 8; c.lineCap = 'round'; c.setLineDash([2, 18]);
+    c.save(); c.strokeStyle = B.softLine; c.lineWidth = 8; c.lineCap = 'round'; c.setLineDash([2, 18]);
     c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
     const last = pts[n - 1]; c.lineTo(Y.lerp(pts[0].x, last.x, lk), Y.lerp(pts[0].y, last.y, lk)); c.stroke(); c.restore();
     p.nodes.forEach((nd, i) => {
@@ -490,8 +490,8 @@ T.thumb = {
     const s = Math.min(W, H) * 0.42, x0 = Y.vertical ? W / 2 - s / 2 : W * 0.66 - s / 2, y0 = Y.vertical ? H * 0.58 : H / 2 - s / 2;
     c.save(); c.strokeStyle = B.accent2; c.lineWidth = 6 * Y.S;
     for (let i = 0; i < 6; i++) { const o = (i + 0.5) * s / 6; [[x0 + o, y0 - s * 0.12, x0 + o, y0], [x0 + o, y0 + s, x0 + o, y0 + s * 1.12], [x0 - s * 0.12, y0 + o, x0, y0 + o], [x0 + s, y0 + o, x0 + s * 1.12, y0 + o]].forEach(([a, b2, c2, d2]) => { c.beginPath(); c.moveTo(a, b2); c.lineTo(c2, d2); c.stroke(); }); }
-    Y.rr(x0, y0, s, s, 26 * Y.S); c.fillStyle = '#0d1430'; c.fill(); c.stroke();
-    const g = 5; for (let i = 0; i < g; i++) for (let j = 0; j < g; j++) { c.fillStyle = (i * 7 + j * 3) % 4 ? 'rgba(61,107,255,0.55)' : B.accent2; Y.rr(x0 + s * 0.12 + i * s * 0.155, y0 + s * 0.12 + j * s * 0.155, s * 0.12, s * 0.12, 6 * Y.S); c.fill(); }
+    Y.rr(x0, y0, s, s, 26 * Y.S); c.fillStyle = B.chip; c.fill(); c.stroke();
+    const g = 5; for (let i = 0; i < g; i++) for (let j = 0; j < g; j++) { c.fillStyle = (i * 7 + j * 3) % 4 ? B.chipCell : B.accent2; Y.rr(x0 + s * 0.12 + i * s * 0.155, y0 + s * 0.12 + j * s * 0.155, s * 0.12, s * 0.12, 6 * Y.S); c.fill(); }
     c.restore();
     }
     const tx = Y.vertical ? W / 2 : W * 0.06, tw = Y.vertical ? W * 0.88 : W * 0.52, align = Y.vertical ? 'center' : 'left';
