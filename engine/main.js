@@ -27,7 +27,7 @@
     // Slow camera push-in on scenes longer than 7 s, so long explanations never sit completely still.
     const PUSH_MIN = 7, PUSH = 0.045;
     const scenes = TL.scenes, caps = TL.captions || [];
-    await Y.loadGraphics(Y.graphicKeys(scenes.map((s) => s.params)));
+    await Y.loadGraphics(Y.graphicKeys([scenes.map((s) => s.params), TL.worlds || []]));   // world props can be emoji too
     const bootReports = Y.reports.slice();
     // The first scene is fully formed from frame 0 (the hook must read instantly, no fade-in).
     // (world shots animate from frame 0 instead: their title is drawn fully formed on the first shot)
