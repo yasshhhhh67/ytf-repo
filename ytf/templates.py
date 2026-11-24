@@ -22,6 +22,8 @@ def obj(props, required, **kw):
 # ---------- cartoon world (engine/world.js): one illustrated world that stays on screen across world_shot scenes ----------
 PROP_KINDS = ['tower', 'car', 'phone', 'house', 'building', 'tree', 'server', 'laptop', 'router', 'satellite',
               'person', 'cloud', 'chip', 'robot', 'tunnel', 'lamp']                     # must match engine/world.js
+PROP_WIDTH = {'tower': 150, 'car': 230, 'phone': 70, 'house': 230, 'building': 210, 'tree': 130, 'server': 150, 'laptop': 190,
+              'router': 170, 'satellite': 240, 'person': 80, 'cloud': 270, 'chip': 170, 'robot': 160, 'tunnel': 480, 'lamp': 60}
 ACTIONS = ['show', 'hide', 'move', 'attach', 'link', 'unlink', 'range', 'range_off', 'badge', 'highlight',
            'activate', 'deactivate', 'pulse', 'label']
 ICONS = ['bars0', 'bars1', 'bars2', 'bars3', 'bars4', 'check', 'cross', 'question', 'warn', 'clock', 'bolt']
@@ -44,7 +46,9 @@ it rides on, e.g. a phone "on" a car shows in a bubble above the car)}}. Sizes a
 building 210x440, server 150x290, house 230x215, tree 130x215, car 230x125, person 80x185, laptop 190x120,
 router 170x100, chip 170x170, robot 160x210, tunnel 480x300, satellite and cloud float high up. The screen shows about
 1000 units across, so things that should be on screen TOGETHER must be within ~800 units of each other; spread the
-story left to right (0 to ~3000) and let the camera travel. Keep 3-8 props.
+story left to right (0 to ~3000) and let the camera travel. Keep 3-8 props. Leave at least 300 units between props
+standing on the ground so they never overlap (also when one "move"s next to another: stop 300 short). Small things
+that are the subject (chip, phone, laptop, router, person, emoji graphics) look best at "scale" 1.4-2.
 Then each world_shot scene is one camera shot of that world. The world and everything that happened stays from shot
 to shot (even if other templates cut in between), so build the explanation up step by step."""
 
@@ -202,6 +206,11 @@ def world_errors(world):
             errs.append(f'world: prop {p["id"]} has unknown graphic "{p["graphic"]}"')
         if p.get('on') and (p['on'] not in ids or p['on'] == p['id']):
             errs.append(f'world: prop {p["id"]} is "on" unknown prop "{p["on"]}"')
+    half = lambda p: PROP_WIDTH.get(p.get('kind'), 170) * p.get('scale', 1) / 2
+    ground = sorted((p for p in world['props'] if not p.get('on') and not p.get('y') and not p.get('hidden')), key=lambda p: p['x'])
+    for p1, p2 in zip(ground, ground[1:]):
+        if p2['x'] - p1['x'] < 0.8 * (half(p1) + half(p2)):
+            errs.append(f'world: props {p1["id"]} and {p2["id"]} are only {p2["x"] - p1["x"]:g} apart and will overlap; move them further apart')
     return errs
 
 

@@ -240,7 +240,7 @@ function frame(params, stEnd, stStart) {
   const b = bbox(stEnd, ids) || { x0: -400, x1: 400, y0: 0, y1: 500 };
   const hAvail = L.ay - L.top; const floor = Math.max(0, b.y0 - 60);
   let z = Math.min((L.availW - 150) / Math.max(200, b.x1 - b.x0), hAvail / Math.max(150, b.y1 - floor));
-  z = Y.clamp(params.zoom || z, 0.45, 2.4);
+  z = params.zoom ? Y.clamp(params.zoom, 0.45, 2.2) : Y.clamp(z, 0.45, 1.6);     // auto framing never zooms in too far
   return { x: (b.x0 + b.x1) / 2, y: floor, z };
 }
 const lerpCam = (a, b, k) => ({ x: Y.lerp(a.x, b.x, k), y: Y.lerp(a.y, b.y, k), z: Math.exp(Y.lerp(Math.log(a.z), Math.log(b.z), k)) });
