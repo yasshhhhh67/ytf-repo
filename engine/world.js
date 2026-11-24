@@ -335,7 +335,7 @@ function titleBlock(text, hi, y, k, maxW, instant) {
     ws.forEach((word, j) => {
       const kk = instant ? 1 : Y.seg(k, (i0 + j) * 0.07, (i0 + j) * 0.07 + 0.45); if (kk <= 0) { x += wd[j] + sp; return; }
       const isH = hiN && word.replace(/[^A-Z0-9%$]/g, '') === hiN; const s = popScale(kk); const yy = y + li * lh + w.size;
-      c.save(); c.translate(x + wd[j] / 2, yy - w.size * 0.35); c.scale(s, s); c.globalAlpha = Y.clamp(kk * 2);
+      c.save(); c.translate(x + wd[j] / 2, yy - w.size * 0.35); c.scale(s, s); c.globalAlpha *= Y.clamp(kk * 2);
       c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
       c.lineWidth = 16; c.strokeStyle = INK; c.strokeText(word, 0, w.size * 0.35); c.fillStyle = isH ? C.yellow : '#fff'; c.fillText(word, 0, w.size * 0.35);
       c.restore(); x += wd[j] + sp;
@@ -348,19 +348,19 @@ function pill(text, x, y, size, tone, k, maxW) {
   const c = Y.c; const [bg, fg] = TONES[tone] || TONES.yellow; const t = up(text);
   const s0 = Y.fitSize(t, maxW - size * 1.4, size, 26, 900); c.font = Y.font(s0, 900);
   const w = c.measureText(t).width + s0 * 1.4, h = s0 * 1.6; const s = popScale(k);
-  c.save(); c.translate(x, y); c.scale(s, s); c.globalAlpha = Y.clamp(k * 2);
+  c.save(); c.translate(x, y); c.scale(s, s); c.globalAlpha *= Y.clamp(k * 2);
   Y.rr(-w / 2, -h / 2, w, h, h / 2); c.fillStyle = bg; c.fill(); c.lineWidth = 6; c.strokeStyle = tone === 'dark' ? C.yellow : INK; c.stroke();
   c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, 0, s0 * 0.05); c.restore();
   return h;
 }
 function chapterBadge(ch, k) {
   const c = Y.c; const x = Y.vertical ? 70 : 90, y = Y.vertical ? 250 : 60; const s = 92;
-  c.save(); c.globalAlpha = Y.clamp(k * 2); c.translate(x + s / 2, y + s / 2); const sc = popScale(k); c.scale(sc, sc);
+  c.save(); c.globalAlpha *= Y.clamp(k * 2); c.translate(x + s / 2, y + s / 2); const sc = popScale(k); c.scale(sc, sc);
   Y.rr(-s / 2, -s / 2, s, s, 22); c.fillStyle = C.teal; c.fill(); c.lineWidth = 6; c.strokeStyle = INK; c.stroke();
   Y.rr(-s / 2 + 10, -s / 2 + 8, s - 20, 12, 6); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fill();
   c.font = Y.font(64, 900); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(ch.n), 0, 4); c.restore();
   const tk = Y.eo(Y.seg(k, 0.25, 1)); if (tk <= 0) return y + s;
-  c.save(); c.globalAlpha = tk; c.translate((1 - tk) * -30, 0);
+  c.save(); c.globalAlpha *= tk; c.translate((1 - tk) * -30, 0);
   const tw = Y.W - (x + s + 26) - 60; const ts = Y.fitSize(up(ch.title), tw, 66, 36, 900);
   c.font = Y.font(ts, 900); c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round'; c.lineWidth = 12; c.strokeStyle = INK;
   const ty = ch.sub ? y + ts * 0.95 : y + s / 2 + ts * 0.36; c.strokeText(up(ch.title), x + s + 26, ty); c.fillStyle = '#fff'; c.fillText(up(ch.title), x + s + 26, ty);
@@ -379,7 +379,7 @@ const ICONS = {
 function bars(n, k) { const c = Y.c; for (let i = 0; i < 4; i++) { const h = 10 + i * 9; Y.rr(-24 + i * 13, 18 - h, 9, h, 3); c.fillStyle = i < n ? (n <= 1 ? C.coral : '#2fbf71') : 'rgba(11,21,28,0.25)'; c.fill(); } void k; }
 function badge(b, x, y, gt) {
   const c = Y.c; const [bg, fg] = TONES[b.tone] || TONES.yellow; const k = b.k; const s = popScale(k);
-  c.save(); c.translate(x, y); c.scale(s, s); c.globalAlpha = Y.clamp(k * 2);
+  c.save(); c.translate(x, y); c.scale(s, s); c.globalAlpha *= Y.clamp(k * 2);
   let w = 0, h = 72; c.font = Y.font(38, 900); const tw = b.text ? c.measureText(up(b.text)).width : 0;
   w = (b.icon ? 64 : 0) + (b.text ? tw + 36 : 0) + (b.icon && !b.text ? 8 : 0);
   const bgc = b.icon && !b.text ? C.cream : bg;
@@ -393,6 +393,18 @@ function badge(b, x, y, gt) {
 
 // ---------- the template ----------
 const toScreen = (cam, L, x, y) => ({ x: L.ax + (x - cam.x) * cam.z, y: L.ay - (y - cam.y) * cam.z });
+function overlayOf(run, i) { const { ch, from } = chapterAt(run, i); return { p: Y.TL.scenes[i].params, cues: Y.TL.scenes[i].cues || {}, ch, chFrom: from }; }
+// Draw one shot's overlay at shot time lt with opacity alpha. hide.x = lay it out but don't draw it; still.x = fully shown.
+function drawOverlay(o, lt, alpha, { hide, still }) {
+  const c = Y.c; let y = Y.vertical ? 250 : 60;
+  const part = (hidden, fn) => { c.save(); c.globalAlpha *= hidden ? 0 : alpha; const r = fn(); c.restore(); return r; };
+  if (o.ch) y = part(hide.ch, () => chapterBadge(o.ch, still.ch ? 1 : Y.seg(lt, 0.05, 0.75))) + (o.ch.sub ? 50 : 30);
+  if (o.p.title) y += part(hide.title, () => titleBlock(o.p.title, o.p.highlight, y, still.title ? 1 : Y.seg(lt, 0, 1.2), Y.W - 120, !!still.title)) + 20;
+  if (o.p.callout) {
+    const at = o.cues.callout != null ? o.cues.callout : 0.5; const k = still.callout ? 1 : Y.seg(lt, at, at + 0.45);
+    if (k > 0) part(hide.callout, () => pill(o.p.callout.text, Y.W / 2, y + 40, Y.vertical ? 44 : 40, o.p.callout.tone || 'yellow', k, Y.W - 140));
+  }
+}
 function chapterAt(run, i) { let ch = null, from = null; for (const j of run.shots) { if (j > i) break; const p = Y.TL.scenes[j].params; if (p.chapter) { ch = p.chapter; from = j; } } return { ch, from }; }
 
 T.world_shot = {
@@ -450,23 +462,23 @@ T.world_shot = {
       if (o.badge && o.badge.k > 0) badge(o.badge, Y.clamp(top.x, 120, Y.W - 120), y - 10, gt);
     }
 
-    // chapter badge, title, callout
-    let y = Y.vertical ? 250 : 60; const { ch, from } = chapterAt(run, i);
-    if (ch) { const shown = from < i && run.shots.includes(i - 1); y = chapterBadge(ch, shown ? 1 : Y.seg(lt, 0.05, 0.75)) + (ch.sub ? 50 : 30); }
-    const prevP = i > 0 && Y.worldContinues(TL.scenes[i - 1], scene) ? TL.scenes[i - 1].params : null;
-    const fadeOld = (draw) => { const k = 1 - Y.seg(lt, 0, 0.3); if (k <= 0) return; c.save(); c.globalAlpha = k; draw(); c.restore(); };
-    if (prevP && prevP.title && prevP.title !== p.title)       // the last shot's title leaves instead of vanishing
-      fadeOld(() => titleBlock(prevP.title, prevP.highlight, prevP.chapter || chapterAt(run, i - 1).ch ? y : (Y.vertical ? 250 : 60), 1, Y.W - 120, true));
-    if (prevP && prevP.callout && (!p.callout || prevP.callout.text !== p.callout.text) && !p.title)
-      fadeOld(() => pill(prevP.callout.text, Y.W / 2, y + 40, Y.vertical ? 44 : 40, prevP.callout.tone || 'yellow', 1, Y.W - 140));
-    if (p.title) {
-      const same = prevP && prevP.title === p.title;
-      y += titleBlock(p.title, p.highlight, y, Y.seg(lt, 0, 1.2), Y.W - 120, i === 0 || same) + 20;
+    // chapter badge, title, callout. On a cut from the previous shot of this world, the parts that change hand over
+    // cleanly: the old ones slide up and fade out first, then the new ones pop in. Parts that stay the same don't move.
+    const co = overlayOf(run, i); const prevI = i > 0 && Y.worldContinues(TL.scenes[i - 1], scene) ? i - 1 : null;
+    const po = prevI != null ? overlayOf(run, prevI) : null;
+    const same = {
+      ch: !!(po && co.ch && po.chFrom === co.chFrom),
+      title: !!(po && co.p.title && po.p.title === co.p.title),
+      callout: !!(po && co.p.callout && po.p.callout && po.p.callout.text === co.p.callout.text),
+    };
+    const out = po ? 1 - Y.seg(lt, 0, 0.25) : 0;
+    if (out > 0) {
+      c.save(); if (!same.ch) c.translate(0, -(1 - Y.eo(out)) * 36);    // slide up only when the whole top block leaves
+      drawOverlay(po, 99, out, { hide: same, still: { ch: true, title: true, callout: true } });
+      c.restore();
     }
-    if (p.callout) {
-      const at = (scene.cues && scene.cues.callout != null) ? scene.cues.callout : 0.5;
-      const k = Y.seg(lt, at, at + 0.45); if (k > 0) pill(p.callout.text, Y.W / 2, y + 40, Y.vertical ? 44 : 40, p.callout.tone || 'yellow', k, Y.W - 140);
-    }
+    const changed = po && ((po.ch && !same.ch) || (po.p.title && !same.title) || (po.p.callout && !same.callout));
+    drawOverlay(co, lt - (changed ? 0.22 : 0), 1, { hide: {}, still: i === 0 ? { ch: true, title: true, callout: false } : same });
   },
   settle: () => null,
 };
