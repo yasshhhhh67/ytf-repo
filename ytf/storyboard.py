@@ -6,13 +6,14 @@ import jsonschema
 
 from . import llm
 from .common import read_json, write_json
-from .templates import TEMPLATES, catalogue_text, semantic_errors
+from .templates import TEMPLATES, WORLD, catalogue_text, semantic_errors, shot_errors, world_errors
 
 SCENE = {'type': 'object', 'additionalProperties': False, 'required': ['segments', 'template', 'params'],
          'properties': {'segments': {'type': 'array', 'minItems': 1, 'maxItems': 4, 'items': {'type': 'string'}},
                         'template': {'enum': list(TEMPLATES)}, 'params': {'type': 'object'}}}
 BOARD_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['scenes'],
-                'properties': {'scenes': {'type': 'array', 'minItems': 1, 'items': SCENE}}}
+                'properties': {'world': WORLD, 'scenes': {'type': 'array', 'minItems': 1, 'items': SCENE}}}
+NOT_DATA = ('a', 'b', 'left_cores', 'right_cores', 'tasks', 'decimals', 'to', 'r', 'zoom', 'n', 'x', 'y', 'scale')  # layout numbers, not facts
 
 
 def _numbers(params):
@@ -20,7 +21,7 @@ def _numbers(params):
     def walk(x, key=''):
         if isinstance(x, dict):
             for k, v in x.items():
-                if k not in ('a', 'b', 'left_cores', 'right_cores', 'tasks', 'decimals'):
+                if k not in NOT_DATA:
                     walk(v, k)
         elif isinstance(x, list):
             for v in x: walk(v, key)
@@ -49,13 +50,18 @@ def make_check(segs, fmt, final_scene_required):
             errs.append(f'scenes must cover these segment ids in order (a segment may continue into the next scene); expected {order}; got {flat}')
         if any(flat.count(g) > 3 for g in order):
             errs.append('a segment may be split across at most 3 scenes')
+        world = obj.get('world')
+        if world:
+            errs += world_errors(world)
         for i, sc in enumerate(obj['scenes']):
             t = sc['template']
-            for e in jsonschema.Draft202012Validator(TEMPLATES[t]['schema']).iter_errors(sc['params']):
-                errs.append(f'scene {i + 1} ({t}) params {"/".join(map(str, e.absolute_path))}: {e.message[:160]}')
-            if errs:
-                continue
+            bad = [f'scene {i + 1} ({t}) params {"/".join(map(str, e.absolute_path))}: {e.message[:160]}'
+                   for e in jsonschema.Draft202012Validator(TEMPLATES[t]['schema']).iter_errors(sc['params'])]
+            if bad:                                  # schema errors first; the semantic checks assume a valid shape
+                errs += bad; continue
             errs += [f'scene {i + 1}: {m}' for m in semantic_errors(t, sc['params'])]
+            if t == 'world_shot':
+                errs += [f'scene {i + 1}: {m}' for m in shot_errors(sc['params'], world)]
             text = ' '.join(by_id[g]['text'] + ' ' + ' '.join(c['quote'] for c in by_id[g]['claims']) for g in sc['segments'] if g in by_id)
             for v in _numbers(sc['params']):
                 if v > 10 and not _num_in(v, text):
@@ -72,7 +78,10 @@ def make_check(segs, fmt, final_scene_required):
                 errs.append('in a Short each scene may cover at most 2 segments')
         if fmt == 'long' and any(len(sc['segments']) > 2 for sc in obj['scenes']):
             errs.append('in a long video each scene may cover at most 2 segments (a new picture every few sentences)')
-        with_g = sum(1 for sc in obj['scenes'] if '"graphic"' in json.dumps(sc['params']) or sc['template'] in ('crowd', 'graphic_flow'))
+        with_g = sum(1 for sc in obj['scenes'] if '"graphic"' in json.dumps(sc['params']) or sc['template'] in ('crowd', 'graphic_flow', 'world_shot'))
+        shots = sum(1 for sc in obj['scenes'] if sc['template'] == 'world_shot')
+        if fmt == 'short' and shots < 0.5 * len(obj['scenes']):
+            errs.append(f'only {shots} of {len(obj["scenes"])} scenes are world_shot; a Short is told in ONE cartoon world, so at least half must be world_shot (cut to other templates only for a number, a comparison or the end)')
         plain = len(obj['scenes']) - with_g
         if fmt == 'short' and plain > 2:
             errs.append(f'{plain} scenes have no illustration; a Short may have at most 2 (use hero_graphic, versus_graphics, crowd, graphic_steps, graphic_flow, or add a "graphic")')
@@ -81,10 +90,10 @@ def make_check(segs, fmt, final_scene_required):
         cnt = Counter(sc['template'] for sc in obj['scenes'])
         if fmt == 'long' and len(obj['scenes']) >= 8:
             for t, n in cnt.items():
-                if n / len(obj['scenes']) > 0.4:
+                if t != 'world_shot' and n / len(obj['scenes']) > 0.4:
                     errs.append(f'template {t} is used for {n} of {len(obj["scenes"])} scenes; vary the visuals (max 40%)')
         for a, b, c in zip(obj['scenes'], obj['scenes'][1:], obj['scenes'][2:]):
-            if a['template'] == b['template'] == c['template']:
+            if a['template'] == b['template'] == c['template'] != 'world_shot':
                 errs.append(f'three {a["template"]} scenes in a row; vary the visuals'); break
         return errs
     return check
@@ -96,7 +105,7 @@ def run(proj, P):
     groups = [script['segments']] if fmt == 'short' else [
         [s for s in script['segments'] if s['chapter'] == cid] for cid in chapters]
     groups = [g for g in groups if g]
-    scenes = []
+    scenes, worlds = [], []
     for gi, segs in enumerate(groups):
         last = gi == len(groups) - 1
         aspect = 'vertical 9:16 phone Short' if fmt == 'short' else 'horizontal 16:9 video'
@@ -108,14 +117,15 @@ def run(proj, P):
         board = llm.complete_json(f'storyboard_{gi + 1}', f"""Create the storyboard for part of a {aspect} explainer.
 {chapter_rule}
 Pacing: {pace}. Pick the template that best EXPLAINS each idea visually (diagrams, flows, comparisons, numbers),
-not decoration. Make the video's central analogy visible on screen with ILLUSTRATIONS (hero_graphic, versus_graphics,
+not decoration.
+LOOK: a flat cartoon explainer. {'Tell this Short inside ONE cartoon world: define "world" with the few things the story is about (placed left to right in story order), then show it as a run of world_shot scenes. Each shot moves the camera (focus) and makes something happen (a car drives, a link appears, a badge changes) right when the narration says it, using "cue" words. Use chapter badges (n 1, 2, 3) for the main beats, a short callout pill for the key idea of a shot, and a big title only on the hook shot. At least half the scenes must be world_shot; cut away only for a striking number (big_number), a comparison, or the end_card.' if fmt == 'short' else 'Where the chapter explains how something physically works (signals, devices, data moving between places), define a "world" for this chapter and show it with world_shot scenes; use the other templates for structure, numbers and comparisons.'} Make the video's central analogy visible on screen with ILLUSTRATIONS (hero_graphic, versus_graphics,
 crowd, graphic_steps, graphic_flow, or a "graphic" on kinetic_text/title_card/big_number/end_card). Shorts: at most 2
 scenes without an illustration. Long videos: at least 40% of scenes with an illustration. Use plain diagrams/charts
 only where the exact structure or numbers matter. On-screen words must be as simple as the narration
 (no jargon the narration didn't explain). Prefer topic-specific visuals: matrix_multiply for matrix math, parallel_grid for parallel vs sequential
 work, labeled_diagram for how components connect. On-screen text must be short, accurate and match what is said;
 never put a number on screen that isn't in the narration or its evidence. Use "cue" words (copied from the narration)
-so items appear when they are spoken. {'Shorts: the first scene must be kinetic_text showing the hook in 1-3 big lines (2-4 words each), visible instantly.' if fmt == 'short' else ''}
+so items appear when they are spoken. {'Shorts: the first scene shows the hook instantly: a world_shot with the hook as its "title" (2-5 words, one highlight word), or kinetic_text in 1-3 big lines (2-4 words each).' if fmt == 'short' else ''}
 {'The last scene must be end_card.' if last else 'Do not use end_card.'}
 
 Templates:
@@ -124,6 +134,11 @@ Templates:
 Segments to cover, in order (ids, narration, evidence):
 {[{'id': s['id'], 'text': s['text'], 'evidence': [c['quote'] for c in s['claims']]} for s in segs]}""",
             BOARD_SCHEMA, check=make_check(segs, fmt, last), timeout=600)
+        if board.get('world'):                       # each storyboard call (the Short, or one chapter) has its own world
+            worlds.append(board['world'])
+            for sc in board['scenes']:
+                if sc['template'] == 'world_shot':
+                    sc['world'] = len(worlds) - 1
         scenes += board['scenes']
-    write_json(P / 'storyboard.json', {'scenes': scenes})
+    write_json(P / 'storyboard.json', {'scenes': scenes, 'worlds': worlds})
     return {'scenes': len(scenes), 'templates': dict(Counter(s['template'] for s in scenes))}

@@ -4,7 +4,7 @@ import re
 from .common import read_json, write_json
 
 STOP = set('the a an and or of to in on at for is are was were be it its this that with as by from but so if then than you your we our they their can will just how what why'.split())
-LIST_KEYS = {'process_flow': 'steps', 'bar_chart': 'bars', 'kinetic_text': 'lines'}
+LIST_KEYS = {'process_flow': 'steps', 'bar_chart': 'bars', 'kinetic_text': 'lines', 'world_shot': 'actions'}
 
 
 def _n(w):
@@ -51,6 +51,8 @@ def run(proj, P):
             ws = seg_words[g0]; t = ws[min(len(ws) - 1, round(part * len(ws) / parts))]['s']
         start = 0.0 if i == 0 else max(0.0, t - 0.12)
         scenes.append({'id': f's{i + 1:02d}', 'template': sc['template'], 'params': sc['params'], 'segments': sc['segments'], 'start': round(start, 3)})
+        if 'world' in sc:
+            scenes[-1]['world'] = sc['world']
     for i, s in enumerate(scenes):
         s['end'] = scenes[i + 1]['start'] if i + 1 < len(scenes) else dur
         # reveal cues: explicit "cue" words, or for kinetic_text the first word of each line
@@ -64,6 +66,11 @@ def run(proj, P):
                 hit = next((w for w in sw if w['s'] >= after - 0.05 and _n(w['w']) == _n(cue)), None)
                 if hit:
                     cues[j] = round(max(0.15, hit['s'] - s['start'] - 0.1), 3); after = hit['s']
+            callout = s['params'].get('callout') if s['template'] == 'world_shot' else None
+            if callout and callout.get('cue'):
+                hit = next((w for w in sw if _n(w['w']) == _n(callout['cue'])), None)
+                if hit:
+                    cues['callout'] = round(max(0.15, hit['s'] - s['start'] - 0.1), 3)
             if cues:
                 s['cues'] = cues
     chapters = []
@@ -73,8 +80,8 @@ def run(proj, P):
             ch = segt[s['segments'][0]]['chapter']
             if ch not in seen:
                 seen.add(ch); chapters.append({'t': 0.0 if not chapters else s['start'], 'title': titles.get(ch, ch)})
-    tl = {'format': fmt, 'width': W, 'height': H, 'fps': 30, 'duration': dur,
-          'scenes': scenes,
+    tl = {'format': fmt, 'style': proj.get('style', 'cartoon'), 'width': W, 'height': H, 'fps': 30, 'duration': dur,
+          'scenes': scenes, 'worlds': board.get('worlds', []),
           'captions': _captions(words) if fmt == 'short' else [], 'chapters': chapters}
     write_json(P / 'render' / 'timeline.json', tl)
     lens = [s['end'] - s['start'] for s in scenes]

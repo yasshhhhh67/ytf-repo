@@ -6,12 +6,25 @@ const Y = (window.Y = {});
 Y.TEMPLATES = {};
 Y.reports = [];             // layout problems found while drawing (text overflow etc.); read by `render.mjs check`
 
-Y.BRAND = {
-  bg0: '#070b18', bg1: '#101a36', ink: '#f4f6ff', muted: '#9aa6c8', faint: 'rgba(154,166,200,0.18)',
-  accent: '#3d6bff', accent2: '#22d3ee', good: '#22c55e', bad: '#f43f5e', warn: '#ffd84d',
-  card: 'rgba(255,255,255,0.06)', cardLine: 'rgba(255,255,255,0.14)',
-  sans: 'Inter', mono: 'JetBrains Mono',
+// Two channel styles. "cartoon" (default): flat cartoon explainer, dark teal night, teal + yellow, thick outlines.
+// "blueprint": the original navy engineering-grid look. The timeline's "style" field picks one.
+Y.STYLES = {
+  blueprint: {
+    bg0: '#070b18', bg1: '#101a36', ink: '#f4f6ff', muted: '#9aa6c8', faint: 'rgba(154,166,200,0.18)',
+    accent: '#3d6bff', accent2: '#22d3ee', good: '#22c55e', bad: '#f43f5e', warn: '#ffd84d',
+    card: 'rgba(255,255,255,0.06)', cardLine: 'rgba(255,255,255,0.14)',
+    soft: 'rgba(61,107,255,0.22)', softLine: 'rgba(160,180,255,0.6)', dim: 'rgba(150,170,230,0.45)', onWarn: '#0b1020', chip: '#0d1430', chipCell: 'rgba(61,107,255,0.55)',
+  },
+  cartoon: {
+    bg0: '#0e1b23', bg1: '#1f3a48', ink: '#f4f1e8', muted: '#9fb6bf', faint: 'rgba(159,182,191,0.18)',
+    accent: '#2a9d8f', accent2: '#f7c948', good: '#2fbf71', bad: '#ff6b5b', warn: '#f7c948',
+    card: 'rgba(255,255,255,0.07)', cardLine: 'rgba(255,255,255,0.18)',
+    soft: 'rgba(42,157,143,0.26)', softLine: 'rgba(160,230,220,0.65)', dim: 'rgba(159,182,191,0.45)', onWarn: '#0b151c', chip: '#14262f', chipCell: 'rgba(63,182,168,0.6)',
+  },
 };
+Y.BRAND = { sans: 'Inter', mono: 'JetBrains Mono', ...Y.STYLES.cartoon };
+Y.style = 'cartoon';
+Y.setStyle = (name) => { Y.style = Y.STYLES[name] ? name : 'cartoon'; Object.assign(Y.BRAND, Y.STYLES[Y.style]); Y._bg = null; };
 
 // ---------- math & easing ----------
 Y.clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -122,6 +135,22 @@ Y.arrow = (x1, y1, x2, y2, color, lw, k = 1, head = 16) => {
 // held frames can be reused by the renderer. Same on every video: variety comes from the diagrams, not the colours.
 Y.background = () => {
   const c = Y.c, W = Y.W, H = Y.H;
+  if (Y.style === 'cartoon') {                              // night sky: teal gradient, soft glow, a few stars
+    if (!Y._bg || Y._bg.w !== W || Y._bg.h !== H) {
+      const off = document.createElement('canvas'); off.width = W; off.height = H; const o = off.getContext('2d');
+      const g = o.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0e1b23'); g.addColorStop(0.6, '#1a3240'); g.addColorStop(1, '#122530');
+      o.fillStyle = g; o.fillRect(0, 0, W, H);
+      const r = Y.rng(5);
+      for (let i = 0; i < 60; i++) { o.globalAlpha = 0.25 + r() * 0.4; o.fillStyle = '#d8ecf0'; o.beginPath(); o.arc(r() * W, r() * H * 0.75, 1 + r() * 2, 0, 6.283); o.fill(); }
+      o.globalAlpha = 1;
+      const gg = o.createRadialGradient(W * 0.75, H * 0.2, 0, W * 0.75, H * 0.2, Math.max(W, H) * 0.55); gg.addColorStop(0, 'rgba(63,182,168,0.16)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+      o.fillStyle = gg; o.fillRect(0, 0, W, H);
+      const v = o.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.8);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.45)'); o.fillStyle = v; o.fillRect(0, 0, W, H);
+      Y._bg = { w: W, h: H, cv: off };
+    }
+    c.drawImage(Y._bg.cv, 0, 0); return;
+  }
   if (!Y._bg || Y._bg.w !== W || Y._bg.h !== H) {
     const off = document.createElement('canvas'); off.width = W; off.height = H; const o = off.getContext('2d');
     const g = o.createLinearGradient(0, 0, W * 0.35, H); g.addColorStop(0, '#0d1838'); g.addColorStop(1, '#050914');

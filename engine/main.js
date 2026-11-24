@@ -10,13 +10,14 @@
 
     if (qs.get('thumb')) {                                 // still-image mode for thumbnails
       const job = await (await fetch('/job/thumb.json')).json();
-      Y.init(job.width, job.height); await Y.loadGraphics(Y.graphicKeys(job.params));
+      Y.setStyle(job.style); Y.init(job.width, job.height); await Y.loadGraphics(Y.graphicKeys(job.params));
       OP.still = (q = 0.92) => { Y.reports = []; Y.background(); Y.TEMPLATES.thumb.draw(job.params, 0, 0, {}); return Y.c.canvas.toDataURL('image/jpeg', q); };
       OP.ready = true; return;
     }
 
     const TL = await (await fetch('/job/timeline.json')).json();
-    Y.init(TL.width, TL.height);
+    Y.setStyle(TL.style); Y.init(TL.width, TL.height);
+    Y.TL = TL; TL.scenes.forEach((s, i) => { s._i = i; });
     // Shorts: templates draw in a smaller virtual box that is scaled up ~1.34x, so everything reads well on a phone.
     // Both formats draw in a smaller virtual box that is scaled up, so text and illustrations read well on phones:
     // Shorts ~1.34x (box 940x1020 at 70,230), long-form 1.25x (box 1700x900 at 110,90).
@@ -29,7 +30,9 @@
     await Y.loadGraphics(Y.graphicKeys(scenes.map((s) => s.params)));
     const bootReports = Y.reports.slice();
     // The first scene is fully formed from frame 0 (the hook must read instantly, no fade-in).
-    const localT = (i, t) => t - scenes[i].start + (i === 0 ? 5 : 0);
+    // (world shots animate from frame 0 instead: their title is drawn fully formed on the first shot)
+    const full = (s) => !!(Y.TEMPLATES[s.template] || {}).fullBleed;
+    const localT = (i, t) => t - scenes[i].start + (i === 0 && !full(scenes[i]) ? 5 : 0);
     const missing = scenes.filter((s) => !Y.TEMPLATES[s.template]).map((s) => s.template);
     if (missing.length) throw new Error('unknown templates: ' + [...new Set(missing)].join(', '));
 
@@ -39,8 +42,9 @@
     const sceneAt = (t) => { let i = scenes.findIndex((s) => t >= s.start && t < s.end); if (i < 0) i = t < scenes[0].start ? 0 : scenes.length - 1; return i; };
     const drawScene = (ctx, s, lt) => {
       ctx.clearRect(0, 0, TL.width, TL.height); Y.c = ctx; ctx.save();
-      const d = s.end - s.start, z = d > PUSH_MIN ? 1 + PUSH * Y.eio(Y.clamp(lt / d)) : 1;
-      ctx.translate(OFF[0], OFF[1]); ctx.scale(VS, VS);
+      const fb = full(s);                                  // full-bleed templates draw in screen pixels with their own camera
+      const d = s.end - s.start, z = !fb && d > PUSH_MIN ? 1 + PUSH * Y.eio(Y.clamp(lt / d)) : 1;
+      if (!fb) { ctx.translate(OFF[0], OFF[1]); ctx.scale(VS, VS); }
       if (z !== 1) { const cxv = Y.box.w / 2, cyv = Y.box.h / 2; ctx.translate(cxv, cyv); ctx.scale(z, z); ctx.translate(-cxv, -cyv); }
       try { Y.TEMPLATES[s.template].draw(s.params, lt, s.end - s.start, s); }
       catch (e) { Y.reports.push({ kind: 'error', scene: s.id, msg: String(e && e.message || e) }); }
@@ -55,9 +59,9 @@
       let size = 84; c.font = Y.font(size, 900);
       while (c.measureText(g.text.toUpperCase()).width > TL.width - 120 && size > 48) { size -= 4; c.font = Y.font(size, 900); }
       const sp = c.measureText(' ').width; const ws = words.map((w) => c.measureText(w).width); const tw = ws.reduce((a, b) => a + b, 0) + sp * (words.length - 1);
-      c.save(); c.translate(TL.width / 2, 1395); c.scale(Y.lerp(0.85, 1, k), Y.lerp(0.85, 1, k)); c.globalAlpha = Y.clamp(k * 1.5);
+      c.save(); c.translate(TL.width / 2, Y.style === 'cartoon' ? 1530 : 1395);   // cartoon: below the world's road c.scale(Y.lerp(0.85, 1, k), Y.lerp(0.85, 1, k)); c.globalAlpha = Y.clamp(k * 1.5);
       let x = -tw / 2; c.textAlign = 'left'; c.textBaseline = 'middle'; c.lineJoin = 'round';
-      words.forEach((w, i) => { c.lineWidth = 14; c.strokeStyle = 'rgba(0,0,0,0.85)'; c.strokeText(w, x, 0);
+      words.forEach((w, i) => { c.lineWidth = Y.style === 'cartoon' ? 16 : 14; c.strokeStyle = Y.style === 'cartoon' ? '#0b151c' : 'rgba(0,0,0,0.85)'; c.strokeText(w, x, 0);
         c.fillStyle = w.replace(/[^A-Z0-9%$]/g, '') === hi.replace(/[^A-Z0-9%$]/g, '') && hi ? Y.BRAND.warn : '#fff'; c.fillText(w, x, 0); x += ws[i] + sp; });
       c.restore();
     }
@@ -66,17 +70,25 @@
       const i = sceneAt(t), s = scenes[i], lt = localT(i, t);
       Y.background();
       drawScene(L1, s, lt);
-      // dip transition: the old scene fades out first, then the new one rises in (headings never overlap)
-      const k = i > 0 && lt < TR ? Y.eo(Y.seg(lt, 0.1, TR)) : 1;
-      const out = i > 0 && lt < 0.12 ? 1 - Y.seg(lt, 0, 0.12) : 0;
+      // dip transition: the old scene fades out first, then the new one rises in (headings never overlap).
+      // Consecutive shots of one world skip it: the world stays and the camera glides.
+      const cont = i > 0 && Y.worldContinues(scenes[i - 1], s);
+      const k = i > 0 && !cont && lt < TR ? Y.eo(Y.seg(lt, 0.1, TR)) : 1;
+      const out = i > 0 && !cont && lt < 0.12 ? 1 - Y.seg(lt, 0, 0.12) : 0;
       if (out > 0) { const p = scenes[i - 1]; drawScene(L2, p, p.end - p.start); main.save(); main.globalAlpha = out; main.drawImage(L2.canvas, 0, 0); main.restore(); }
       main.save(); main.globalAlpha = k; main.translate(0, (1 - k) * 36 * Y.S); main.drawImage(L1.canvas, 0, 0); main.restore();
       if (TL.format === 'short' && s.template !== 'kinetic_text') drawCaption(t);   // the words are already on screen
+      if (TL.format === 'short' && Y.style === 'cartoon') {                          // progress bar along the top
+        const c = main, x0 = 60, w = TL.width - 120, y0 = 34, f = Y.clamp(t / TL.duration);
+        c.save(); Y.c = c; Y.rr(x0, y0, w, 10, 5); c.fillStyle = 'rgba(255,255,255,0.16)'; c.fill();
+        Y.rr(x0, y0, Math.max(10, w * f), 10, 5); c.fillStyle = Y.BRAND.warn; c.fill(); c.restore();
+      }
     };
     // null = frame animates; otherwise a key that stays equal while the picture is unchanged
     OP.frameKey = (t) => {
       const i = sceneAt(t), s = scenes[i], lt = localT(i, t); const tm = Y.TEMPLATES[s.template];
       const st = tm.settle ? tm.settle(s.params, s.end - s.start, s) : null;
+      if (TL.format === 'short' && Y.style === 'cartoon') return null;                 // the progress bar moves every frame
       if (st == null || lt < Math.max(st, TR + 0.05) || s.end - s.start > PUSH_MIN) return null;
       if (TL.format !== 'short' || s.template === 'kinetic_text') return 's' + i;
       const gi = capAt(t); if (gi >= 0 && t < caps[gi].s + 0.13) return null;

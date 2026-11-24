@@ -19,6 +19,36 @@ def obj(props, required, **kw):
     return {'type': 'object', 'properties': props, 'required': required, 'additionalProperties': False, **kw}
 
 
+# ---------- cartoon world (engine/world.js): one illustrated world that stays on screen across world_shot scenes ----------
+PROP_KINDS = ['tower', 'car', 'phone', 'house', 'building', 'tree', 'server', 'laptop', 'router', 'satellite',
+              'person', 'cloud', 'chip', 'robot', 'tunnel', 'lamp']                     # must match engine/world.js
+ACTIONS = ['show', 'hide', 'move', 'attach', 'link', 'unlink', 'range', 'range_off', 'badge', 'highlight',
+           'activate', 'deactivate', 'pulse', 'label']
+ICONS = ['bars0', 'bars1', 'bars2', 'bars3', 'bars4', 'check', 'cross', 'question', 'warn', 'clock', 'bolt']
+PID = {'type': 'string', 'pattern': '^[a-z][a-z0-9_]{0,11}$'}
+TONE = {'enum': ['yellow', 'red', 'teal', 'dark']}
+WORLD = obj({
+    'setting': {'enum': ['road', 'city', 'indoor']},
+    'props': {'type': 'array', 'minItems': 1, 'maxItems': 14, 'items': obj({
+        'id': PID, 'kind': {'enum': PROP_KINDS}, 'graphic': GRAPHIC,
+        'x': {'type': 'number', 'minimum': -1000, 'maximum': 6000}, 'y': {'type': 'number', 'minimum': 0, 'maximum': 1200},
+        'scale': {'type': 'number', 'minimum': 0.5, 'maximum': 2}, 'label': S(14), 'hidden': {'type': 'boolean'}, 'on': PID},
+        ['id', 'x'])},
+}, ['setting', 'props'])
+WORLD_HELP = f"""WORLD (cartoon look; use it for most of a Short). Define ONE "world" for the whole storyboard: a side-on cartoon
+scene on a ground line. "setting": road (road, trees, hills), city (road + skyline) or indoor (floor + wall).
+"props": the things in it, each {{"id", "kind" (one of {PROP_KINDS}) OR "graphic" (a GRAPHICS key, for anything the
+kinds don't cover), "x" (world position, ground units), optional "y" (height above ground, for flying things),
+"scale", "label" (1-2 words shown above it), "hidden" (true = appears later via a "show" action), "on" (id of a prop
+it rides on, e.g. a phone "on" a car shows in a bubble above the car)}}. Sizes at scale 1: tower 150 wide x 560 tall,
+building 210x440, server 150x290, house 230x215, tree 130x215, car 230x125, person 80x185, laptop 190x120,
+router 170x100, chip 170x170, robot 160x210, tunnel 480x300, satellite and cloud float high up. The screen shows about
+1000 units across, so things that should be on screen TOGETHER must be within ~800 units of each other; spread the
+story left to right (0 to ~3000) and let the camera travel. Keep 3-8 props.
+Then each world_shot scene is one camera shot of that world. The world and everything that happened stays from shot
+to shot (even if other templates cut in between), so build the explanation up step by step."""
+
+
 TEMPLATES = {
     'title_card': {
         'purpose': 'Video title or chapter opener. Use at the start of each chapter in long videos.',
@@ -108,6 +138,27 @@ TEMPLATES = {
         'schema': obj({'title': S(40), 'steps': {'type': 'array', 'minItems': 2, 'maxItems': 4, 'items': obj(
             {'graphic': GRAPHIC, 'label': S(30), 'cue': CUE}, ['graphic', 'label'])}}, ['steps']),
     },
+    'world_shot': {
+        'purpose': ('One camera shot of the cartoon WORLD (see WORLD below): optional big 2-line "title" (hook-style, '
+                    '1 "highlight" word shown in yellow), optional "chapter" badge {n, title, sub} that stays until the next '
+                    'chapter, optional "callout" pill {text, tone, cue}, "focus" = prop ids the camera frames, and 0-6 '
+                    '"actions" played in order (each may have a "cue" word): show/hide target; move target to (prop id or x) '
+                    '- cars drive, people walk; attach target to (prop id); link target to (prop id) with style '
+                    'signal/data/weak/wire = dotted line with travelling dots; unlink target [to]; range target [r] = dashed '
+                    'coverage circle, range_off; badge target with text and/or icon (' + ', '.join(ICONS) + ') and tone, '
+                    'badge with neither clears it; highlight target (yellow glow, one at a time; "none" clears); '
+                    'activate/deactivate target (tower/router broadcast, screen on); pulse target; label target text.'),
+        'schema': obj({'title': S(40), 'highlight': S(16),
+                       'chapter': obj({'n': {'type': 'integer', 'minimum': 1, 'maximum': 9}, 'title': S(18), 'sub': S(34)}, ['n', 'title']),
+                       'callout': obj({'text': S(28), 'tone': TONE, 'cue': CUE}, ['text']),
+                       'focus': {'type': 'array', 'minItems': 1, 'maxItems': 6, 'items': PID},
+                       'zoom': {'type': 'number', 'minimum': 0.5, 'maximum': 2.2},
+                       'actions': {'type': 'array', 'maxItems': 6, 'items': obj({
+                           'do': {'enum': ACTIONS}, 'target': {'type': 'string', 'pattern': '^([a-z][a-z0-9_]{0,11}|none)$'},
+                           'to': {'anyOf': [PID, {'type': 'number', 'minimum': -1000, 'maximum': 6000}]},
+                           'style': {'enum': ['signal', 'data', 'weak', 'wire']}, 'r': {'type': 'number', 'minimum': 150, 'maximum': 900},
+                           'text': S(16), 'icon': {'enum': ICONS}, 'tone': TONE, 'cue': CUE}, ['do', 'target'])}}, []),
+    },
     'graphic_flow': {
         'purpose': 'Something travelling between 2-4 illustrated places/things (data from phone to server, power from plug to chip); optional moving packet illustration.',
         'schema': obj({'title': S(40), 'nodes': {'type': 'array', 'minItems': 2, 'maxItems': 4, 'items': obj(
@@ -120,6 +171,7 @@ def catalogue_text():
     lines = []
     for name, t in TEMPLATES.items():
         lines.append(f'- {name}: {t["purpose"]}\n  params schema: {json.dumps(t["schema"], separators=(",", ":"))}')
+    lines.append('\n' + WORLD_HELP)
     lines.append('\nGRAPHICS (illustration keys for every "graphic"/"packet" field; use ONLY these exact keys):\n' + ', '.join(GRAPHICS))
     return '\n'.join(lines)
 
@@ -132,6 +184,50 @@ def _graphic_values(o, out):
     elif isinstance(o, list):
         for v in o: _graphic_values(v, out)
     return out
+
+
+NEEDS = {'move': 'to', 'attach': 'to', 'link': 'to'}
+
+
+def world_errors(world):
+    """Checks on the storyboard's world definition."""
+    errs = []
+    ids = [p['id'] for p in world['props']]
+    if len(set(ids)) != len(ids):
+        errs.append('world: duplicate prop ids')
+    for p in world['props']:
+        if ('kind' in p) == ('graphic' in p):
+            errs.append(f'world: prop {p["id"]} needs exactly one of "kind" or "graphic"')
+        if 'graphic' in p and p['graphic'] not in GRAPHICS:
+            errs.append(f'world: prop {p["id"]} has unknown graphic "{p["graphic"]}"')
+        if p.get('on') and (p['on'] not in ids or p['on'] == p['id']):
+            errs.append(f'world: prop {p["id"]} is "on" unknown prop "{p["on"]}"')
+    return errs
+
+
+def shot_errors(p, world):
+    """Checks on one world_shot against the world (prop ids exist, actions have what they need)."""
+    if world is None:
+        return ['world_shot used but the storyboard has no "world"']
+    ids = {q['id'] for q in world['props']}; errs = []
+    for f in p.get('focus', []):
+        if f not in ids: errs.append(f'world_shot: focus "{f}" is not a prop id {sorted(ids)}')
+    for a in p.get('actions', []):
+        if a['target'] != 'none' and a['target'] not in ids:
+            errs.append(f'world_shot: {a["do"]} target "{a["target"]}" is not a prop id {sorted(ids)}')
+        if a['target'] == 'none' and a['do'] != 'highlight':
+            errs.append(f'world_shot: target "none" only works with highlight')
+        if a['do'] in NEEDS and 'to' not in a:
+            errs.append(f'world_shot: {a["do"]} needs "to"')
+        if isinstance(a.get('to'), str) and a['to'] not in ids:
+            errs.append(f'world_shot: {a["do"]} to "{a["to"]}" is not a prop id')
+        if a['do'] in ('attach', 'link') and not isinstance(a.get('to'), str):
+            errs.append(f'world_shot: {a["do"]} "to" must be a prop id')
+    if not (p.get('title') or p.get('callout') or p.get('chapter') or p.get('actions')):
+        errs.append('world_shot: give it a title, chapter, callout or at least one action (something must happen)')
+    if p.get('highlight') and p.get('title') and p['highlight'].lower() not in p['title'].lower().split():
+        errs.append('world_shot: "highlight" must be one word of the title')
+    return errs
 
 
 def semantic_errors(name, p):
